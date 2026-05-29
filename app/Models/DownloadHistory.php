@@ -18,6 +18,10 @@ class DownloadHistory extends Model
         'status',
         'provider',
         'item_d_code',
+        'getstock_slug',
+        'getstock_item_id',
+        'getstock_type',
+        'is_premium',
     ];
 
     public function user()

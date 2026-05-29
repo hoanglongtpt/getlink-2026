@@ -70,4 +70,9 @@ class User extends Authenticatable
     {
         return $this->xu_balance >= $cost;
     }
+
+    public function isBlocked(): bool
+    {
+        return $this->blocked_at !== null;
+    }
 }

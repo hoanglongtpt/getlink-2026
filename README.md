@@ -1,66 +1,153 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# GetLink 2026
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel application that integrates Web2m for payment, Getstock for file downloading, and Google Drive API for cloud storage.
 
-## About Laravel
+## Project Overview
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+This application supports:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- User registration and login with email/password
+- Google OAuth login
+- Wallet balance management (`Xu`)
+- Web2m payment webhook handling
+- Download workflow with cache hit and cache miss handling
+- Background job processing for Getstock polling and Google Drive upload
+- Admin panel for users, transactions, resources, and settings
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Main Components
 
-## Learning Laravel
+- `users`: application users, Google ID, wallet balance, role
+- `transactions`: payment history and converted Xu
+- `resources`: cached downloads and Google Drive metadata
+- `download_histories`: download request history, Getstock metadata, direct links
+- `settings`: admin configuration such as `download_fee`
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Setup Instructions
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Requirements
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- PHP 8.1 or higher
+- Composer
+- MySQL
+- Redis (recommended for queue processing)
 
-## Laravel Sponsors
+### Installation
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+1. Clone the repository:
 
-### Premium Partners
+   ```bash
+   git clone <repository-url> .
+   ```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+2. Install dependencies:
 
-## Contributing
+   ```bash
+   composer install
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+3. Copy the environment file:
 
-## Code of Conduct
+   ```bash
+   cp .env.example .env
+   ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+4. Configure your `.env` values:
 
-## Security Vulnerabilities
+   ```env
+   APP_NAME=GetLink
+   APP_ENV=local
+   APP_KEY=base64:YOUR_APP_KEY
+   APP_URL=http://localhost
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=getlink_2026
+   DB_USERNAME=root
+   DB_PASSWORD=
+
+   QUEUE_CONNECTION=database
+   CACHE_DRIVER=file
+   SESSION_DRIVER=file
+   ```
+
+5. Add third-party API variables:
+
+   ```env
+   GETSTOCK_EMAIL=your_getstock_email
+   GETSTOCK_PASSWORD=your_getstock_password
+   GETSTOCK_ACCESS_TOKEN=
+   WEB2M_WEBHOOK_SECRET=your_web2m_webhook_secret
+
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   GOOGLE_REDIRECT_URI=http://localhost/auth/google/callback
+   ```
+
+6. Run database migrations and seed default data:
+
+   ```bash
+   php artisan migrate --seed
+   ```
+
+7. Create a storage symlink:
+
+   ```bash
+   php artisan storage:link
+   ```
+
+8. Start the application:
+
+   ```bash
+   php artisan serve
+   ```
+
+### Queue Worker
+
+To process background jobs, run:
+
+```bash
+php artisan queue:work
+```
+
+## Admin Access
+
+Seeded default admin credentials:
+
+- Email: `admin@example.com`
+- Password: `password`
+
+> Change the default password immediately in production.
+
+## Google Service Account
+
+Upload the Google service account JSON via the admin settings page. The JSON file is saved to `storage/app/google-service-account.json` and used for Google Drive uploads.
+
+## Important Notes
+
+- Store all secrets and API credentials only in `.env`.
+- `GETSTOCK_ACCESS_TOKEN` can be optionally configured directly, otherwise the service uses login credentials.
+- `download_fee` is stored in the `settings` table and can be updated from the admin panel.
+- Background jobs are used to poll Getstock and upload to Google Drive.
+
+## Useful Commands
+
+- `composer install`
+- `php artisan migrate --seed`
+- `php artisan serve`
+- `php artisan queue:work`
+
+## Project Structure
+
+- `app/Services/GetstockService.php`
+- `app/Services/GoogleDriveService.php`
+- `app/Jobs/ProcessGetstockDownload.php`
+- `app/Jobs/ProcessDownloadedResource.php`
+- `app/Http/Controllers/DownloadController.php`
+- `app/Http/Controllers/AdminController.php`
+- `app/Http/Controllers/AuthController.php`
+- `app/Http/Controllers/ProfileController.php`
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is released under the MIT License.

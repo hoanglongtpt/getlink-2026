@@ -2,20 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessDownloadedResource;
+use App\Jobs\ProcessGetstockDownload;
 use App\Models\DownloadHistory;
 use App\Models\Resource;
 use App\Models\Setting;
+use App\Services\GetstockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class DownloadController extends Controller
 {
     public function index()
     {
-        return view('downloads.index');
+        $user = Auth::user();
+        $histories = DownloadHistory::where('user_id', $user->id)->latest()->take(10)->get();
+        $downloadFee = (int) Setting::getValue('download_fee', 10);
+
+        return view('downloads.index', compact('histories', 'downloadFee'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, GetstockService $getstockService)
     {
         $request->validate([
             'link' => 'required|url',
@@ -30,10 +38,15 @@ class DownloadController extends Controller
             return back()->withErrors(['balance' => 'Số dư xu không đủ để tải tài nguyên.']);
         }
 
-        $resource = Resource::where('original_link', $request->input('link'))->first();
+        $link = $request->input('link');
+        $isPre = (int) $request->input('ispre');
 
-        if ($resource && $resource->google_drive_link) {
+        $resource = Resource::where('original_link', $link)->first();
+
+        if ($resource && filled($resource->google_drive_link)) {
             $resource->increment('download_count');
+            $user->decrement('xu_balance', $downloadFee);
+
             DownloadHistory::create([
                 'user_id' => $user->id,
                 'resource_id' => $resource->id,
@@ -44,22 +57,78 @@ class DownloadController extends Controller
                 'provider' => $resource->provider,
             ]);
 
-            $user->decrement('xu_balance', $downloadFee);
-
             return redirect()->route('downloads.index')->with('success', 'Tài nguyên đã có sẵn. Link Drive sẽ được gửi về.');
         }
 
-        // TODO: call Getstock API and dispatch background upload job.
-        $user->decrement('xu_balance', $downloadFee);
-
         $history = DownloadHistory::create([
             'user_id' => $user->id,
-            'original_link' => $request->input('link'),
+            'original_link' => $link,
             'xu_cost' => $downloadFee,
             'status' => 'pending',
+            'is_premium' => $isPre === 1,
         ]);
 
-        return redirect()->route('downloads.index')->with('success', 'Yêu cầu tải được chấp nhận. Hệ thống đang xử lý trong nền.');
+        $user->decrement('xu_balance', $downloadFee);
+
+        try {
+            $info = $getstockService->getInfo($link, $isPre);
+            $type = null;
+
+            if (! empty($info['result']['support']['type'][0])) {
+                $type = $info['result']['support']['type'][0];
+            }
+
+            $getLinkResponse = $getstockService->getLink($link, $isPre, $type);
+            $slug = data_get($getLinkResponse, 'result.provSlug');
+            $itemId = data_get($getLinkResponse, 'result.itemID');
+            $type = $type ?: data_get($getLinkResponse, 'result.itemType');
+
+            if (! $slug || ! $itemId || ! $type) {
+                throw new \RuntimeException('Getstock response missing required download references.');
+            }
+
+            $history->update([
+                'getstock_slug' => $slug,
+                'getstock_item_id' => $itemId,
+                'getstock_type' => $type,
+                'status' => 'processing',
+            ]);
+
+            $statusResult = null;
+            for ($attempt = 0; $attempt < 4; $attempt++) {
+                sleep(5);
+                $statusResponse = $getstockService->checkDownloadStatus($slug, $itemId, $isPre, $type);
+                if (data_get($statusResponse, 'result.status') === 1 && data_get($statusResponse, 'result.itemDCode')) {
+                    $statusResult = $statusResponse;
+                    break;
+                }
+            }
+
+            if ($statusResult) {
+                $itemDCode = data_get($statusResult, 'result.itemDCode');
+                $directLink = $getstockService->buildDirectDownloadLink($itemDCode);
+
+                $history->update([
+                    'direct_download_link' => $directLink,
+                    'item_d_code' => $itemDCode,
+                    'status' => 'ready',
+                ]);
+
+                ProcessDownloadedResource::dispatch($history);
+
+                return redirect()->route('downloads.index')->with('success', 'Download is ready. Use the direct link from your history entry.');
+            }
+
+            ProcessGetstockDownload::dispatch($history);
+
+            return redirect()->route('downloads.index')->with('success', 'Download request is accepted. Processing in background.');
+        } catch (\Throwable $exception) {
+            Log::error('Getstock error', ['error' => $exception->getMessage(), 'user_id' => $user->id, 'link' => $link]);
+            $history->update(['status' => 'failed']);
+            $user->increment('xu_balance', $downloadFee);
+
+            return back()->withErrors(['download' => 'Unable to process the download request at this time. Please try again later.']);
+        }
     }
 
     public function status(Request $request)

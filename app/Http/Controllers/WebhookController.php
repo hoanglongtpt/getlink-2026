@@ -11,8 +11,34 @@ class WebhookController extends Controller
 {
     public function web2m(Request $request)
     {
-        // TODO: Validate the Web2m webhook signature and payload.
+        $secret = env('WEB2M_WEBHOOK_SECRET');
         $payload = $request->all();
+
+        if ($secret) {
+            $signature = $request->header('X-Web2m-Signature')
+                ?? $request->header('Web2m-Signature')
+                ?? $request->header('X-Signature');
+
+            if (! $signature) {
+                Log::warning('Web2m webhook missing signature', $payload);
+
+                return response()->json(['message' => 'Missing webhook signature'], 403);
+            }
+
+            $payloadJson = $request->getContent();
+            $expectedSignature = hash_hmac('sha256', $payloadJson, $secret);
+
+            if (! hash_equals($expectedSignature, $signature)) {
+                Log::warning('Web2m webhook invalid signature', [
+                    'expected' => $expectedSignature,
+                    'received' => $signature,
+                ]);
+
+                return response()->json(['message' => 'Invalid webhook signature'], 403);
+            }
+        } else {
+            Log::warning('WEB2M_WEBHOOK_SECRET is not configured. Webhook signature was not validated.');
+        }
 
         Log::info('Web2m webhook received', $payload);
 

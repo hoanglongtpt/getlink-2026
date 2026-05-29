@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DownloadController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\Auth\SocialiteController;
 use Illuminate\Support\Facades\Route;
@@ -21,10 +23,20 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+});
+
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DownloadController::class, 'index'])->name('downloads.index');
     Route::post('/download', [DownloadController::class, 'store'])->name('downloads.store');
     Route::post('/download/status', [DownloadController::class, 'status'])->name('downloads.status');
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
 });
 
 Route::post('/webhook/web2m', [WebhookController::class, 'web2m'])->name('webhook.web2m');
@@ -32,6 +44,13 @@ Route::post('/webhook/web2m', [WebhookController::class, 'web2m'])->name('webhoo
 Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])->name('auth.google.redirect');
 Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 
-Route::middleware(['auth'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/users', [AdminController::class, 'users'])->name('admin.users');
+    Route::get('/transactions', [AdminController::class, 'transactions'])->name('admin.transactions');
+    Route::get('/resources', [AdminController::class, 'resources'])->name('admin.resources');
+    Route::get('/settings', [AdminController::class, 'settings'])->name('admin.settings');
+    Route::post('/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+    Route::post('/settings/google-service-account', [AdminController::class, 'uploadGoogleServiceAccount'])->name('admin.google.upload');
+    Route::post('/users/{user}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('admin.users.toggle');
 });
