@@ -14,10 +14,15 @@ use Illuminate\Support\Facades\Log;
 
 class DownloadController extends Controller
 {
-    public function index()
+        public function index()
     {
         $user = Auth::user();
-        $histories = DownloadHistory::where('user_id', $user->id)->latest()->take(10)->get();
+        
+        $histories = collect();
+        if ($user) {
+            $histories = DownloadHistory::where('user_id', $user->id)->latest()->take(10)->get();
+        }
+        
         $downloadFee = (int) Setting::getValue('download_fee', 10);
 
         return view('downloads.index', compact('histories', 'downloadFee'));

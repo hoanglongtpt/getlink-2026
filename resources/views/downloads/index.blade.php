@@ -70,8 +70,8 @@
                         <option value="1"{{ old('ispre') === '1' ? ' selected' : '' }}>Premium</option>
                     </select>
                 </div>
-                <button type="submit" class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-purple-800 px-4 py-2.5 text-white font-medium hover:from-purple-700 hover:to-purple-900 transition shadow-md flex items-center justify-center gap-2">
-                    <i class="fas fa-cloud-download-alt"></i> Submit Download
+                                <button type="submit" class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-purple-800 px-4 py-2.5 text-white font-medium hover:from-purple-700 hover:to-purple-900 transition shadow-md flex items-center justify-center gap-2" {{ !Auth::check() ? 'disabled' : '' }}>
+                    <i class="fas fa-cloud-download-alt"></i> {{ Auth::check() ? 'Submit Download' : 'Vui lòng đăng nhập để tải' }}
                 </button>
             </form>
         </div>
@@ -97,8 +97,19 @@
                             <th class="px-6 py-4 font-medium">Result</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 bg-white">
-                        @forelse($histories as $history)
+                                        <tbody class="divide-y divide-gray-100 bg-white">
+                        @if(!Auth::check())
+                            <tr>
+                                <td colspan="4" class="px-6 py-10 text-center">
+                                    <div class="flex flex-col items-center justify-center text-gray-400">
+                                        <i class="fas fa-lock text-4xl mb-3 text-gray-300"></i>
+                                        <p class="mb-2">Vui lòng đăng nhập để xem lịch sử tải về của bạn.</p>
+                                        <a href="{{ url('/login') }}" class="text-purple-600 hover:text-purple-800 font-medium text-sm">Đăng nhập ngay</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @else
+                            @forelse($histories as $history)
                             <tr class="hover:bg-gray-50 transition">
                                 <td class="px-6 py-4">
                                     <div class="flex items-center max-w-[200px] sm:max-w-xs md:max-w-sm">
@@ -146,6 +157,7 @@
                                 </td>
                             </tr>
                         @endforelse
+                        @endif
                     </tbody>
                 </table>
             </div>

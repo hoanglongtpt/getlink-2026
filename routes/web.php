@@ -19,9 +19,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [DownloadController::class, 'index'])->name('home');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -32,8 +30,9 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
+Route::get('/dashboard', [DownloadController::class, 'index'])->name('downloads.index');
+
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', [DownloadController::class, 'index'])->name('downloads.index');
     Route::post('/download', [DownloadController::class, 'store'])->name('downloads.store');
     Route::post('/download/status', [DownloadController::class, 'status'])->name('downloads.status');
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
