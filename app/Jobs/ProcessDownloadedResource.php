@@ -36,7 +36,9 @@ class ProcessDownloadedResource implements ShouldQueue
             return;
         }
 
-        $tempPath = storage_path('app/temp/' . uniqid('resource_', true));
+        $slug = pathinfo(parse_url($history->original_link, PHP_URL_PATH) ?: '', PATHINFO_BASENAME);
+        $slug = preg_replace('/[^A-Za-z0-9_-]+/', '_', $slug) ?: 'resource';
+        $tempPath = storage_path('app/temp/' . $slug . '_' . uniqid('', true));
         @mkdir(dirname($tempPath), 0755, true);
 
         try {
@@ -72,7 +74,12 @@ class ProcessDownloadedResource implements ShouldQueue
             $history->update(['status' => 'failed']);
         } finally {
             if (file_exists($tempPath)) {
-                @unlink($tempPath);
+                if (! @unlink($tempPath)) {
+                    Log::warning('Failed to delete temp downloaded file', [
+                        'history_id' => $this->downloadHistory->id,
+                        'path' => $tempPath,
+                    ]);
+                }
             }
         }
     }
