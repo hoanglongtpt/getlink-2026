@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DownloadController;
@@ -48,7 +49,14 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/google-drive/callback', [\App\Http\Controllers\GoogleDriveController::class, 'handleGoogleDriveCallback'])->name('admin.google.drive.callback');
 });
 
-Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+// Admin Authentication Routes
+Route::prefix('admin')->group(function () {
+    Route::get('login', [AdminAuthController::class, 'showLogin'])->name('admin.login');
+    Route::post('login', [AdminAuthController::class, 'login'])->name('admin.login.post');
+    Route::post('logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
+});
+
+Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/users', [AdminController::class, 'users'])->name('admin.users');
     Route::get('/transactions', [AdminController::class, 'transactions'])->name('admin.transactions');
