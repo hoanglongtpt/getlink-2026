@@ -82,6 +82,7 @@ This application supports:
    GOOGLE_CLIENT_ID=your_google_client_id
    GOOGLE_CLIENT_SECRET=your_google_client_secret
    GOOGLE_REDIRECT_URI=http://localhost/auth/google/callback
+   GOOGLE_DRIVE_FOLDER_ID=your_google_drive_folder_id
    ```
 
 6. Run database migrations and seed default data:

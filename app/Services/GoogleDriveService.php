@@ -33,10 +33,16 @@ class GoogleDriveService
         $file->setName(basename($path));
         $file->setDescription('Uploaded from GetLink process for ' . $originalLink);
 
+        $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
+        if ($folderId) {
+            $file->setParents([$folderId]);
+        }
+
         $result = $this->service->files->create($file, [
             'data' => file_get_contents($path),
             'mimeType' => mime_content_type($path),
             'uploadType' => 'multipart',
+            'supportsAllDrives' => true,
         ]);
 
         return $result->id;
