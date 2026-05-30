@@ -39,9 +39,20 @@
     </div>
 @endif
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Form Box -->
-    <div class="lg:col-span-1">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Sidebar Cột Trái -->
+    <div class="lg:col-span-1 space-y-6">
+        
+        <!-- Banner Hình Ảnh Giới Thiệu Giá -->
+        <div class="rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden relative group cursor-pointer">
+            <!-- Thay thế link src bên dưới bằng link ảnh thật của bạn (VD: /images/banner.jpg hoặc link URL) -->
+            <img src="https://placehold.co/600x250/f3e8ff/6b21a8?text=Banner+Gi%C3%A1+L%C6%B0%E1%BB%A3t+T%E1%BA%A3i" alt="Bảng giá lượt tải" class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                <span class="text-white text-sm font-medium drop-shadow-md">Xem chi tiết bảng giá <i class="fas fa-arrow-right ml-1"></i></span>
+            </div>
+        </div>
+
+        <!-- Form Box -->
         <div class="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
             <h2 class="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
                 <i class="fas fa-link text-purple-600"></i> New Download
@@ -68,15 +79,17 @@
 
     <!-- History Box -->
     <div class="lg:col-span-2">
-        <div class="rounded-xl bg-white p-0 shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <!-- Đặt chiều cao tối đa (max-h) và cho phép scroll nội dung bảng -->
+        <div class="rounded-xl bg-white p-0 shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full max-h-[480px]">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
                 <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <i class="fas fa-history text-purple-600"></i> Recent History
                 </h2>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-y-auto flex-1 relative custom-scrollbar">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wider">
+                    <!-- Thêm sticky top-0 để giữ header cố định khi cuộn -->
+                    <thead class="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wider sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th class="px-6 py-4 font-medium">Link</th>
                             <th class="px-6 py-4 font-medium">Status</th>
@@ -139,4 +152,40 @@
         </div>
     </div>
 </div>
+
+<!-- Box Thẻ SEO (Full Width) -->
+<div class="rounded-xl bg-white p-6 shadow-sm border border-gray-100 mb-6">
+    <h3 class="text-sm font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <i class="fas fa-hashtag text-purple-600"></i> Khám phá từ khóa
+    </h3>
+    <div class="flex flex-wrap gap-2">
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Getstock Premium</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Freepik Premium</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Envato Elements</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Motion Array</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Pikbest</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Tài Khoản Giá Rẻ</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Tải Ảnh Nhanh</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Vector Đẹp</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-md border border-gray-200 hover:border-purple-200 transition-colors">#Mua Chung Tài Khoản</a>
+    </div>
+    <p class="text-[11px] text-gray-400 mt-4 italic">* Các thẻ này giúp tăng cường SEO và điều hướng tìm kiếm.</p>
+</div>
+
+<!-- CSS cho thanh cuộn đẹp hơn (tùy chọn) -->
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9; 
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+    }
+</style>
 @endsection
