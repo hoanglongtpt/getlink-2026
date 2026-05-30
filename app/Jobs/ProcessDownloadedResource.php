@@ -43,9 +43,37 @@ class ProcessDownloadedResource implements ShouldQueue
 
         try {
             $response = Http::withOptions(['sink' => $tempPath])->get($history->direct_download_link);
+            $successful = $response->successful();
+            $statusCode = $response->status();
+            $bodyPreview = substr($response->body(), 0, 500);
 
-            if (! $response->successful()) {
-                throw new \RuntimeException('Failed to download direct file: ' . $response->status() . ' body=' . substr($response->body(), 0, 500));
+            // Try to close underlying PSR-7 stream to release file handle on Windows.
+            if (method_exists($response, 'toPsrResponse')) {
+                try {
+                    $psr = $response->toPsrResponse();
+                    if ($psr && method_exists($psr, 'getBody')) {
+                        $body = $psr->getBody();
+                        if (is_object($body) && method_exists($body, 'close')) {
+                            try {
+                                $body->close();
+                            } catch (\Throwable $e) {
+                                // ignore
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
+            unset($response);
+            // Force garbage collection to ensure any lingering stream resources are freed.
+            if (function_exists('gc_collect_cycles')) {
+                @gc_collect_cycles();
+            }
+
+            if (! $successful) {
+                throw new \RuntimeException('Failed to download direct file: ' . $statusCode . ' body=' . $bodyPreview);
             }
 
             $fileId = $driveService->uploadFile($tempPath, $history->original_link);
@@ -73,6 +101,14 @@ class ProcessDownloadedResource implements ShouldQueue
             ]);
             $history->update(['status' => 'failed']);
         } finally {
+            // Try to free any remaining resources and clear file stat cache before deletion.
+            if (function_exists('gc_collect_cycles')) {
+                @gc_collect_cycles();
+            }
+            if (function_exists('clearstatcache')) {
+                @clearstatcache(true, $tempPath);
+            }
+
             if (file_exists($tempPath)) {
                 if (! @unlink($tempPath)) {
                     Log::warning('Failed to delete temp downloaded file', [

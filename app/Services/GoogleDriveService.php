@@ -22,12 +22,15 @@ class GoogleDriveService
      */
     protected $service;
 
+    protected bool $usingOauth = false;
+
     public function __construct()
     {
         $oauthTokenJson = Setting::getValue('google_drive_oauth_tokens');
         $serviceAccountPath = storage_path('app/google-service-account.json');
 
         if ($oauthTokenJson) {
+            $this->usingOauth = true;
             $tokenData = json_decode(decrypt($oauthTokenJson), true);
             $this->client = new \Google_Client();
             $this->client->setClientId(config('services.google.client_id'));
@@ -86,11 +89,12 @@ class GoogleDriveService
         $file->setDescription('Uploaded from GetLink process for ' . $originalLink);
 
         $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
-        if (! $folderId) {
+
+        if ($folderId) {
+            $file->setParents([$folderId]);
+        } elseif (! $this->usingOauth) {
             throw new \RuntimeException('GOOGLE_DRIVE_FOLDER_ID is required for service account uploads. Use a Shared Drive folder ID.');
         }
-
-        $file->setParents([$folderId]);
 
         $mimeType = mime_content_type($path) ?: 'application/octet-stream';
         $chunkSizeBytes = 1 * 1024 * 1024; // 1MB chunks
@@ -138,6 +142,9 @@ class GoogleDriveService
         }
 
         fclose($handle);
+        if (function_exists('gc_collect_cycles')) {
+            @gc_collect_cycles();
+        }
         $this->client->setDefer(false);
 
         if (! $status || ! isset($status->id)) {
