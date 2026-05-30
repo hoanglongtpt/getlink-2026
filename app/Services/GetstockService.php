@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -21,15 +22,53 @@ class GetstockService
         ]);
     }
 
+    protected ?string $token = null;
+    protected bool $useEnvToken = true;
+
     public function getToken(): string
     {
-        if (filled(env('GETSTOCK_ACCESS_TOKEN'))) {
-            return env('GETSTOCK_ACCESS_TOKEN');
+        if ($this->token !== null) {
+            return $this->token;
         }
 
-        return Cache::remember('getstock_access_token', 3600, function () {
+        if ($this->useEnvToken && filled(env('GETSTOCK_ACCESS_TOKEN'))) {
+            $this->token = env('GETSTOCK_ACCESS_TOKEN');
+            return $this->token;
+        }
+
+        return $this->token = Cache::remember('getstock_access_token', 3600, function () {
             return $this->authenticate();
         });
+    }
+
+    protected function performRequest(string $method, string $uri, array $options = [], bool $retry = true)
+    {
+        $options = array_merge($options, $this->authenticatedOptions());
+
+        try {
+            return $this->client->request($method, $uri, $options);
+        } catch (ClientException $exception) {
+            $response = $exception->getResponse();
+
+            if (
+                $retry &&
+                $response &&
+                $response->getStatusCode() === 401
+            ) {
+                Log::warning('Getstock token expired or invalid, refreshing token', [
+                    'uri' => $uri,
+                    'message' => $exception->getMessage(),
+                ]);
+
+                $this->token = null;
+                $this->useEnvToken = false;
+                Cache::forget('getstock_access_token');
+
+                return $this->performRequest($method, $uri, $options, false);
+            }
+
+            throw $exception;
+        }
     }
 
     protected function authenticate(): string
@@ -70,12 +109,12 @@ class GetstockService
 
     public function getInfo(string $link, int $isPre): array
     {
-        $response = $this->client->post('v1/getinfo', array_merge($this->authenticatedOptions(), [
+        $response = $this->performRequest('POST', 'v1/getinfo', [
             'json' => [
                 'link' => $link,
                 'ispre' => $isPre,
             ],
-        ]));
+        ]);
 
         return json_decode((string) $response->getBody(), true);
     }
@@ -95,23 +134,23 @@ class GetstockService
             $payload['webhook'] = $webhook;
         }
 
-        $response = $this->client->post('v1/getlink', array_merge($this->authenticatedOptions(), [
+        $response = $this->performRequest('POST', 'v1/getlink', [
             'json' => $payload,
-        ]));
+        ]);
 
         return json_decode((string) $response->getBody(), true);
     }
 
     public function checkDownloadStatus(string $slug, string $id, int $isPre, string $type): array
     {
-        $response = $this->client->post('v1/download-status', array_merge($this->authenticatedOptions(), [
+        $response = $this->performRequest('POST', 'v1/download-status', [
             'json' => [
                 'slug' => $slug,
                 'id' => $id,
                 'ispre' => $isPre,
                 'type' => $type,
             ],
-        ]));
+        ]);
 
         return json_decode((string) $response->getBody(), true);
     }

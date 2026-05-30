@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ProcessDownloadedResource implements ShouldQueue
@@ -39,8 +40,11 @@ class ProcessDownloadedResource implements ShouldQueue
         @mkdir(dirname($tempPath), 0755, true);
 
         try {
-            $contents = file_get_contents($history->direct_download_link);
-            file_put_contents($tempPath, $contents);
+            $response = Http::withOptions(['sink' => $tempPath])->get($history->direct_download_link);
+
+            if (! $response->successful()) {
+                throw new \RuntimeException('Failed to download direct file: ' . $response->status() . ' body=' . substr($response->body(), 0, 500));
+            }
 
             $fileId = $driveService->uploadFile($tempPath, $history->original_link);
             $driveLink = $driveService->getViewerLink($fileId);
