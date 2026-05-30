@@ -44,6 +44,11 @@ Route::post('/webhook/web2m', [WebhookController::class, 'web2m'])->name('webhoo
 Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])->name('auth.google.redirect');
 Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/admin/google-drive/connect', [\App\Http\Controllers\GoogleDriveController::class, 'redirectToGoogleDrive'])->name('admin.google.drive.connect');
+    Route::get('/admin/google-drive/callback', [\App\Http\Controllers\GoogleDriveController::class, 'handleGoogleDriveCallback'])->name('admin.google.drive.callback');
+});
+
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/users', [AdminController::class, 'users'])->name('admin.users');

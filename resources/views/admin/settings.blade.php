@@ -20,6 +20,24 @@
     </div>
 
     <div class="mt-8 rounded bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold">Google Drive OAuth</h2>
+        <p class="mt-2 text-sm text-gray-600">Connect Google Drive using OAuth 2.0 so uploads use a Google user account instead of a service account.</p>
+
+        @if(! empty($googleDriveEmail))
+            <div class="mt-4 rounded border border-green-200 bg-green-50 p-4 text-green-800">
+                Connected account: <strong>{{ $googleDriveEmail }}</strong>
+            </div>
+            <div class="mt-4">
+                <a href="{{ route('admin.google.drive.connect') }}" class="rounded bg-yellow-600 px-4 py-2 text-white">Reconnect Google Drive</a>
+            </div>
+        @else
+            <div class="mt-4">
+                <a href="{{ route('admin.google.drive.connect') }}" class="rounded bg-blue-600 px-4 py-2 text-white">Connect Google Drive</a>
+            </div>
+        @endif
+    </div>
+
+    <div class="mt-8 rounded bg-white p-6 shadow-sm">
         <h2 class="text-lg font-semibold">Upload Google Service Account JSON</h2>
         <form action="{{ route('admin.google.upload') }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-4">
             @csrf

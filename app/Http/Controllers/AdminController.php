@@ -45,8 +45,9 @@ class AdminController extends Controller
     public function settings()
     {
         $downloadFee = Setting::getValue('download_fee', 10);
+        $googleDriveEmail = Setting::getValue('google_drive_oauth_account');
 
-        return view('admin.settings', compact('downloadFee'));
+        return view('admin.settings', compact('downloadFee', 'googleDriveEmail'));
     }
 
     public function updateSettings(Request $request)
