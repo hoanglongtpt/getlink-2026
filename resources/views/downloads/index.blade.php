@@ -1,84 +1,141 @@
 @extends('layouts.app')
 
+@section('header_title', 'Download Resource')
+
 @section('content')
-<div class="container mx-auto px-4 py-8">
-    <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-            <h1 class="text-2xl font-bold">Download Resource</h1>
-            <p class="text-sm text-slate-600">Your current balance: <strong>{{ Auth::user()->xu_balance }} Xu</strong></p>
+<div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">Download Resource</h1>
+        <p class="text-sm text-gray-600 mt-1">Sử dụng link Getstock để tải tài nguyên nhanh chóng</p>
+    </div>
+    <div class="rounded-lg bg-white px-5 py-3 shadow-sm border border-gray-100 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+            <i class="fas fa-info-circle text-lg"></i>
         </div>
-        <div class="rounded bg-white px-4 py-3 shadow-sm">
-            <p class="text-sm text-slate-700">Download fee: <strong>{{ $downloadFee }} Xu</strong> per request</p>
+        <div>
+            <p class="text-xs text-gray-500 font-medium">Chi phí tải</p>
+            <p class="text-sm text-gray-800 font-bold">{{ $downloadFee }} Xu <span class="text-gray-500 font-normal">/ request</span></p>
         </div>
     </div>
+</div>
 
-    @if(session('success'))
-        <div class="mb-4 rounded bg-green-50 p-4 text-green-800">{{ session('success') }}</div>
-    @endif
+@if(session('success'))
+    <div class="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 flex items-start gap-3">
+        <i class="fas fa-check-circle text-green-600 mt-0.5"></i>
+        <div class="text-green-800 font-medium">{{ session('success') }}</div>
+    </div>
+@endif
 
-    @if($errors->any())
-        <div class="mb-4 rounded bg-red-50 p-4 text-red-800">
-            <ul class="list-disc pl-5">
+@if($errors->any())
+    <div class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+        <i class="fas fa-exclamation-circle text-red-600 mt-0.5"></i>
+        <div class="text-red-800 text-sm">
+            <ul class="list-disc pl-4 space-y-1">
                 @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
         </div>
-    @endif
+    </div>
+@endif
 
-    <div class="rounded bg-white p-6 shadow-sm">
-        <form method="POST" action="{{ route('downloads.store') }}" class="space-y-4">
-            @csrf
-            <div>
-                <label for="link" class="block font-medium">Resource link</label>
-                <input id="link" name="link" type="url" value="{{ old('link') }}" class="w-full rounded border-gray-300 p-2" required>
-            </div>
-            <div>
-                <label for="ispre" class="block font-medium">Resource type</label>
-                <select id="ispre" name="ispre" class="w-full rounded border-gray-300 p-2" required>
-                    <option value="0"{{ old('ispre') === '0' ? ' selected' : '' }}>Normal</option>
-                    <option value="1"{{ old('ispre') === '1' ? ' selected' : '' }}>Premium</option>
-                </select>
-            </div>
-            <button type="submit" class="rounded bg-blue-600 px-4 py-2 text-white">Submit download</button>
-        </form>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Form Box -->
+    <div class="lg:col-span-1">
+        <div class="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                <i class="fas fa-link text-purple-600"></i> New Download
+            </h2>
+            <form method="POST" action="{{ route('downloads.store') }}" class="space-y-5">
+                @csrf
+                <div>
+                    <label for="link" class="block text-sm font-medium text-gray-700 mb-1">Resource link</label>
+                    <input id="link" name="link" type="url" value="{{ old('link') }}" placeholder="https://..." class="w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 transition outline-none" required>
+                </div>
+                <div>
+                    <label for="ispre" class="block text-sm font-medium text-gray-700 mb-1">Resource type</label>
+                    <select id="ispre" name="ispre" class="w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 transition outline-none bg-white" required>
+                        <option value="0"{{ old('ispre') === '0' ? ' selected' : '' }}>Normal</option>
+                        <option value="1"{{ old('ispre') === '1' ? ' selected' : '' }}>Premium</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-purple-800 px-4 py-2.5 text-white font-medium hover:from-purple-700 hover:to-purple-900 transition shadow-md flex items-center justify-center gap-2">
+                    <i class="fas fa-cloud-download-alt"></i> Submit Download
+                </button>
+            </form>
+        </div>
     </div>
 
-    <div class="mt-8 rounded bg-white p-6 shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">Recent download history</h2>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-slate-700">
-                    <tr>
-                        <th class="px-4 py-3">Link</th>
-                        <th class="px-4 py-3">Status</th>
-                        <th class="px-4 py-3">Cost</th>
-                        <th class="px-4 py-3">Direct link</th>
-                        <th class="px-4 py-3">Requested at</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200">
-                    @forelse($histories as $history)
+    <!-- History Box -->
+    <div class="lg:col-span-2">
+        <div class="rounded-xl bg-white p-0 shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-history text-purple-600"></i> Recent History
+                </h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wider">
                         <tr>
-                            <td class="px-4 py-3 break-words">{{ \Illuminate\Support\Str::limit($history->original_link, 60) }}</td>
-                            <td class="px-4 py-3">{{ ucfirst($history->status) }}</td>
-                            <td class="px-4 py-3">{{ $history->xu_cost }} Xu</td>
-                            <td class="px-4 py-3">
-                                @if($history->direct_download_link)
-                                    <a href="{{ $history->direct_download_link }}" class="text-blue-600" target="_blank">Download</a>
-                                @else
-                                    N/A
-                                @endif
-                            </td>
-                            <td class="px-4 py-3">{{ $history->created_at->format('Y-m-d H:i') }}</td>
+                            <th class="px-6 py-4 font-medium">Link</th>
+                            <th class="px-6 py-4 font-medium">Status</th>
+                            <th class="px-6 py-4 font-medium">Cost</th>
+                            <th class="px-6 py-4 font-medium">Result</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-slate-500">No downloads yet.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        @forelse($histories as $history)
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center max-w-[200px] sm:max-w-xs md:max-w-sm">
+                                        <div class="truncate text-gray-800" title="{{ $history->original_link }}">
+                                            {{ $history->original_link }}
+                                        </div>
+                                    </div>
+                                    <div class="text-xs text-gray-400 mt-1">{{ $history->created_at->format('M d, Y H:i') }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    @if($history->status === 'completed' || $history->status === 'cached' || $history->status === 'ready')
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            {{ ucfirst($history->status) }}
+                                        </span>
+                                    @elseif($history->status === 'failed')
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            Failed
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ ucfirst($history->status) }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 text-gray-600 font-medium">
+                                    {{ $history->xu_cost }} Xu
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($history->direct_download_link)
+                                        <a href="{{ $history->direct_download_link }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition text-xs font-medium" target="_blank">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    @else
+                                        <span class="text-gray-400 text-xs italic">Processing...</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-6 py-10 text-center">
+                                    <div class="flex flex-col items-center justify-center text-gray-400">
+                                        <i class="fas fa-folder-open text-4xl mb-3 text-gray-300"></i>
+                                        <p>No download history found.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
