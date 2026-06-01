@@ -28,7 +28,7 @@ class DownloadController extends Controller
         return view('downloads.index', compact('histories', 'downloadFee'));
     }
 
-    public function store(Request $request, GetstockService $getstockService)
+        public function store(Request $request, GetstockService $getstockService)
     {
         $request->validate([
             'link' => 'required|url',
@@ -40,6 +40,9 @@ class DownloadController extends Controller
         $downloadFee = (int) Setting::getValue('download_fee', 10);
 
         if (! $user->hasSufficientXu($downloadFee)) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Số dư xu không đủ để tải tài nguyên.']);
+            }
             return back()->withErrors(['balance' => 'Số dư xu không đủ để tải tài nguyên.']);
         }
 
@@ -48,11 +51,12 @@ class DownloadController extends Controller
 
         $resource = Resource::where('original_link', $link)->first();
 
+        // Xử lý Cache Hit
         if ($resource && filled($resource->google_drive_link)) {
             $resource->increment('download_count');
             $user->decrement('xu_balance', $downloadFee);
 
-            DownloadHistory::create([
+            $history = DownloadHistory::create([
                 'user_id' => $user->id,
                 'resource_id' => $resource->id,
                 'original_link' => $resource->original_link,
@@ -62,9 +66,18 @@ class DownloadController extends Controller
                 'provider' => $resource->provider,
             ]);
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tài nguyên đã có sẵn trong Cache. Link tải đã sẵn sàng!',
+                    'history' => $history,
+                    'new_balance' => $user->xu_balance
+                ]);
+            }
             return redirect()->route('downloads.index')->with('success', 'Tài nguyên đã có sẵn. Link Drive sẽ được gửi về.');
         }
 
+        // Tạo bản ghi chờ
         $history = DownloadHistory::create([
             'user_id' => $user->id,
             'original_link' => $link,
@@ -76,6 +89,7 @@ class DownloadController extends Controller
         $user->decrement('xu_balance', $downloadFee);
 
         try {
+            // Lấy Info cơ bản siêu nhanh
             $info = $getstockService->getInfo($link, $isPre);
             $type = null;
 
@@ -96,12 +110,12 @@ class DownloadController extends Controller
                 'getstock_slug' => $slug,
                 'getstock_item_id' => $itemId,
                 'getstock_type' => $type,
-                'status' => 'processing',
+                'status' => 'processing', // Chuyển sang đang xử lý ngầm
             ]);
 
-            $statusResult = null;
-            for ($attempt = 0; $attempt < 4; $attempt++) {
-                sleep(5);
+                        $statusResult = null;
+            for ($attempt = 0; $attempt < 3; $attempt++) {
+                sleep(3);
                 $statusResponse = $getstockService->checkDownloadStatus($slug, $itemId, $isPre, $type);
                 if (data_get($statusResponse, 'result.status') === 1 && data_get($statusResponse, 'result.itemDCode')) {
                     $statusResult = $statusResponse;
@@ -121,32 +135,53 @@ class DownloadController extends Controller
 
                 ProcessDownloadedResource::dispatch($history);
 
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Hệ thống đã nhận link trực tiếp, đang xử lý đưa lên Drive của bạn...',
+                        'history' => $history,
+                        'new_balance' => $user->xu_balance
+                    ]);
+                }
                 return redirect()->route('downloads.index')->with('success', 'Download is ready. Use the direct link from your history entry.');
             }
 
+            // Nếu 3 lần đầu chưa xong, đẩy vào Queue
             ProcessGetstockDownload::dispatch($history);
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Hệ thống đang tiến hành xử lý tải tài nguyên...',
+                    'history' => $history,
+                    'new_balance' => $user->xu_balance
+                ]);
+            }
             return redirect()->route('downloads.index')->with('success', 'Download request is accepted. Processing in background.');
         } catch (\Throwable $exception) {
             Log::error('Getstock error', ['error' => $exception->getMessage(), 'user_id' => $user->id, 'link' => $link]);
             $history->update(['status' => 'failed']);
             $user->increment('xu_balance', $downloadFee);
 
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Lỗi kết nối Getstock, vui lòng thử lại sau. Xu của bạn đã được hoàn lại.']);
+            }
             return back()->withErrors(['download' => 'Unable to process the download request at this time. Please try again later.']);
         }
     }
 
     public function status(Request $request)
     {
-        $request->validate([
-            'download_history_id' => 'required|exists:download_histories,id',
-        ]);
+        $ids = $request->input('ids', []);
+        
+        if (empty($ids)) {
+            return response()->json([]);
+        }
 
-        $history = DownloadHistory::findOrFail($request->input('download_history_id'));
+        $histories = DownloadHistory::whereIn('id', $ids)
+                        ->where('user_id', Auth::id())
+                        ->get(['id', 'status', 'direct_download_link']);
 
-        return response()->json([
-            'status' => $history->status,
-            'direct_link' => $history->direct_download_link,
-        ]);
+        return response()->json($histories);
     }
 }

@@ -35,8 +35,8 @@ class ProcessGetstockDownload implements ShouldQueue
         $attempts = 0;
         $itemDCode = null;
 
-        while ($attempts < 12 && $itemDCode === null) {
-            sleep(5);
+                while ($attempts < 30 && $itemDCode === null) {
+            sleep(4);
             $attempts++;
 
             try {
@@ -46,27 +46,49 @@ class ProcessGetstockDownload implements ShouldQueue
                     (int) $history->is_premium,
                     $history->getstock_type
                 );
+                
+                // Ghi log để kiểm tra tiến trình trả về từ API
+                Log::info('Getstock Polling Status', [
+                    'history_id' => $history->id,
+                    'attempt' => $attempts,
+                    'response' => $statusResult
+                ]);
 
-                if (data_get($statusResult, 'result.status') === 1 && data_get($statusResult, 'result.itemDCode')) {
-                    $itemDCode = data_get($statusResult, 'result.itemDCode');
+                                // Nếu status trả về là thất bại từ bên getstock (thường là trả về mảng kết quả 400 hoặc status != 1)
+                if (isset($statusResult['status']) && $statusResult['status'] === 400) {
+                    Log::warning('Getstock returned 400 failed status', ['history_id' => $history->id, 'response' => $statusResult]);
                     break;
+                }
+                
+                if (isset($statusResult['result']) && is_array($statusResult['result'])) {
+                    if (data_get($statusResult, 'result.status') === 1 && data_get($statusResult, 'result.itemDCode')) {
+                        $itemDCode = data_get($statusResult, 'result.itemDCode');
+                        break;
+                    }
+                    
+                    if (data_get($statusResult, 'result.status') === 2 || data_get($statusResult, 'result.status') === -1) {
+                        Log::warning('Getstock returned failed status code', ['history_id' => $history->id, 'response' => $statusResult]);
+                        break;
+                    }
                 }
             } catch (\Throwable $exception) {
                 Log::warning('Getstock status check failed', ['history_id' => $history->id, 'error' => $exception->getMessage()]);
             }
         }
 
-        if (! $itemDCode) {
-            $history->update(['status' => 'pending']);
+                if (! $itemDCode) {
+            $history->update(['status' => 'failed']);
+            // Hoàn tiền nếu Getstock không trả về file sau 12 lần thử
+            $history->user->increment('xu_balance', $history->xu_cost);
             return;
         }
 
         $directLink = $service->buildDirectDownloadLink($itemDCode);
 
-        $history->update([
+                $history->update([
             'direct_download_link' => $directLink,
             'item_d_code' => $itemDCode,
-            'status' => 'ready',
+            'status' => 'ready', // Tạm để ready, chờ Drive xử lý xong mới là completed
         ]);
 
         ProcessDownloadedResource::dispatch($history);

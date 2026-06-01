@@ -36,6 +36,7 @@ Route::get('/dashboard', [DownloadController::class, 'index'])->name('downloads.
 Route::middleware(['auth'])->group(function () {
     Route::post('/download', [DownloadController::class, 'store'])->name('downloads.store');
     Route::post('/download/status', [DownloadController::class, 'status'])->name('downloads.status');
+    Route::post('/download/poll-status', [DownloadController::class, 'status'])->name('downloads.poll_status');
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
 });
 

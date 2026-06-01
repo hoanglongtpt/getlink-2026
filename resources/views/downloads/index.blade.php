@@ -57,7 +57,7 @@
             <h2 class="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
                 <i class="fas fa-link text-purple-600"></i> New Download
             </h2>
-            <form method="POST" action="{{ route('downloads.store') }}" class="space-y-5">
+            <form id="downloadForm" method="POST" action="{{ route('downloads.store') }}" class="space-y-5">
                 @csrf
                 <div>
                     <label for="link" class="block text-sm font-medium text-gray-700 mb-1">Resource link</label>
@@ -70,7 +70,7 @@
                         <option value="1"{{ old('ispre') === '1' ? ' selected' : '' }}>Premium</option>
                     </select>
                 </div>
-                                <button type="submit" class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-purple-800 px-4 py-2.5 text-white font-medium hover:from-purple-700 hover:to-purple-900 transition shadow-md flex items-center justify-center gap-2" {{ !Auth::check() ? 'disabled' : '' }}>
+                <button id="btnSubmit" type="submit" class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-purple-800 px-4 py-2.5 text-white font-medium hover:from-purple-700 hover:to-purple-900 transition shadow-md flex items-center justify-center gap-2" {{ !Auth::check() ? 'disabled' : '' }}>
                     <i class="fas fa-cloud-download-alt"></i> {{ Auth::check() ? 'Submit Download' : 'Vui lòng đăng nhập để tải' }}
                 </button>
             </form>
@@ -97,7 +97,7 @@
                             <th class="px-6 py-4 font-medium">Result</th>
                         </tr>
                     </thead>
-                                        <tbody class="divide-y divide-gray-100 bg-white">
+                    <tbody id="historyTableBody" class="divide-y divide-gray-100 bg-white">
                         @if(!Auth::check())
                             <tr>
                                 <td colspan="4" class="px-6 py-10 text-center">
@@ -110,7 +110,7 @@
                             </tr>
                         @else
                             @forelse($histories as $history)
-                            <tr class="hover:bg-gray-50 transition">
+                            <tr id="history-row-{{ $history->id }}" data-id="{{ $history->id }}" data-status="{{ $history->status }}" class="hover:bg-gray-50 transition">
                                 <td class="px-6 py-4">
                                     <div class="flex items-center max-w-[200px] sm:max-w-xs md:max-w-sm">
                                         <div class="truncate text-gray-800" title="{{ $history->original_link }}">
@@ -119,7 +119,7 @@
                                     </div>
                                     <div class="text-xs text-gray-400 mt-1">{{ $history->created_at->format('M d, Y H:i') }}</div>
                                 </td>
-                                <td class="px-6 py-4">
+                                                                <td class="px-6 py-4 status-cell">
                                     @if($history->status === 'completed' || $history->status === 'cached' || $history->status === 'ready')
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             {{ ucfirst($history->status) }}
@@ -137,7 +137,7 @@
                                 <td class="px-6 py-4 text-gray-600 font-medium">
                                     {{ $history->xu_cost }} Xu
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                                                <td class="px-6 py-4 whitespace-nowrap action-cell">
                                     @if($history->direct_download_link)
                                         <a href="{{ $history->direct_download_link }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition text-xs font-medium" target="_blank">
                                             <i class="fas fa-download"></i> Download

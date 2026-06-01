@@ -6,6 +6,8 @@
     <title>{{ config('app.name', 'GetLink 2026') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased flex h-screen overflow-hidden">
 
@@ -37,7 +39,7 @@
                 </div>
                 <div class="flex-1 overflow-hidden">
                     <p class="text-sm font-medium truncate">{{ Auth::user()->name }}</p>
-                    <p class="text-xs text-purple-300">{{ Auth::user()->xu_balance }} Xu</p>
+                    <p class="text-xs text-purple-300 xu-balance-display">{{ Auth::user()->xu_balance }} Xu</p>
                 </div>
             </div>
             <form method="POST" action="{{ url('/logout') }}" class="mt-2">
@@ -73,7 +75,7 @@
                 @auth
                 <div class="flex items-center gap-2 bg-purple-900/50 px-3 py-1.5 rounded-full border border-purple-500/30">
                     <i class="fas fa-coins text-yellow-400"></i>
-                    <span class="font-bold">{{ Auth::user()->xu_balance }} Xu</span>
+                    <span class="font-bold xu-balance-display">{{ Auth::user()->xu_balance }} Xu</span>
                 </div>
                 @else
                 <nav class="flex items-center gap-4 text-sm font-medium">
