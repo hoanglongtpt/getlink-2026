@@ -28,7 +28,7 @@ class DownloadController extends Controller
         return view('downloads.index', compact('histories', 'downloadFee'));
     }
 
-        public function store(Request $request, GetstockService $getstockService)
+        public function store(Request $request, GetstockService $getstockService, \App\Services\GoogleDriveService $driveService)
     {
         $request->validate([
             'link' => 'required|url',
@@ -51,25 +51,36 @@ class DownloadController extends Controller
 
         $resource = Resource::where('original_link', $link)->first();
 
-        // Xử lý Cache Hit
+                // Xử lý Cache Hit
         if ($resource && filled($resource->google_drive_link)) {
             $resource->increment('download_count');
             $user->decrement('xu_balance', $downloadFee);
+
+                        // Share file cho user cụ thể khi lấy từ cache
+            $fileId = $resource->google_drive_file_id;
+            $shareData = $driveService->getViewerLink($fileId, $user->email);
 
             $history = DownloadHistory::create([
                 'user_id' => $user->id,
                 'resource_id' => $resource->id,
                 'original_link' => $resource->original_link,
                 'direct_download_link' => $resource->google_drive_link,
+                'drive_permission_id' => $shareData['permission_id'] ?? null,
                 'xu_cost' => $downloadFee,
                 'status' => 'cached',
                 'provider' => $resource->provider,
             ]);
 
+            // Nếu share thành công, lên lịch thu hồi quyền sau 30 phút
+            if (!empty($shareData['permission_id'])) {
+                \App\Jobs\RevokeGoogleDrivePermission::dispatch($fileId, $shareData['permission_id'])
+                    ->delay(now()->addMinutes(30));
+            }
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Tài nguyên đã có sẵn trong Cache. Link tải đã sẵn sàng!',
+                    'message' => 'Tài nguyên đã có sẵn trong Cache. Quyền truy cập 30 phút đã được cấp cho email của bạn!',
                     'history' => $history,
                     'new_balance' => $user->xu_balance
                 ]);

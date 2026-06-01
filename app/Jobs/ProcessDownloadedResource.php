@@ -76,10 +76,13 @@ class ProcessDownloadedResource implements ShouldQueue
                 throw new \RuntimeException('Failed to download direct file: ' . $statusCode . ' body=' . $bodyPreview);
             }
 
-            $fileId = $driveService->uploadFile($tempPath, $history->original_link);
-            $driveLink = $driveService->getViewerLink($fileId);
+                        $fileId = $driveService->uploadFile($tempPath, $history->original_link);
+            
+            // Lấy link nhưng không share public
+            $driveLinkData = $driveService->getViewerLink($fileId);
+            $driveLink = $driveLinkData['link'];
 
-            $resource = Resource::firstOrCreate([
+                        $resource = Resource::updateOrCreate([
                 'original_link' => $history->original_link,
             ], [
                 'provider' => $history->provider,
@@ -90,10 +93,22 @@ class ProcessDownloadedResource implements ShouldQueue
                 'status' => 'cached',
             ]);
 
+            // Share file cho user cụ thể
+            $userEmail = $history->user->email;
+            $shareData = $driveService->getViewerLink($fileId, $userEmail);
+            
             $history->update([
                 'resource_id' => $resource->id,
                 'status' => 'completed',
+                'direct_download_link' => $driveLink,
+                'drive_permission_id' => $shareData['permission_id']
             ]);
+
+            // Nếu share thành công, lên lịch thu hồi quyền sau 30 phút
+            if ($shareData['permission_id']) {
+                RevokeGoogleDrivePermission::dispatch($fileId, $shareData['permission_id'])
+                    ->delay(now()->addMinutes(30));
+            }
         } catch (\Throwable $exception) {
             Log::error('Failed to process downloaded resource', [
                 'history_id' => $this->downloadHistory->id,

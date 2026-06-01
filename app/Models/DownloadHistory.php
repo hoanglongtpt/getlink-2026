@@ -9,11 +9,12 @@ class DownloadHistory extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
+        protected $fillable = [
         'user_id',
         'resource_id',
         'original_link',
         'direct_download_link',
+        'drive_permission_id',
         'xu_cost',
         'status',
         'provider',
