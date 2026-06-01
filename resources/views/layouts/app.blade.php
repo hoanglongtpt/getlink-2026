@@ -20,10 +20,13 @@
             </a>
         </div>
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            <a href="{{ url('/dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-purple-700/50 text-white font-medium hover:bg-purple-700 transition">
+            <a href="{{ url('/dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->is('dashboard') || request()->is('/') ? 'bg-purple-700/50 text-white' : 'text-purple-200 hover:bg-purple-700 hover:text-white' }} font-medium transition">
                 <i class="fas fa-home w-5"></i> Dashboard
             </a>
-            <a href="{{ url('/profile') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg text-purple-200 hover:bg-purple-700 hover:text-white transition">
+            <a href="{{ route('packages.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('packages.index') ? 'bg-purple-700/50 text-white' : 'text-purple-200 hover:bg-purple-700 hover:text-white' }} transition">
+                <i class="fas fa-coins w-5"></i> Nạp Xu (Bảng Giá)
+            </a>
+            <a href="{{ url('/profile') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->is('profile') ? 'bg-purple-700/50 text-white' : 'text-purple-200 hover:bg-purple-700 hover:text-white' }} transition">
                 <i class="fas fa-user w-5"></i> Cá Nhân
             </a>
             @if(Auth::user() && Auth::user()->isAdmin())
@@ -39,7 +42,7 @@
                 </div>
                 <div class="flex-1 overflow-hidden">
                     <p class="text-sm font-medium truncate">{{ Auth::user()->name }}</p>
-                    <p class="text-xs text-purple-300 xu-balance-display">{{ Auth::user()->xu_balance }} Xu</p>
+                    <p class="text-xs text-purple-300 xu-balance-display">{{ Auth::user()->xu_balance }} Xu <span class="text-yellow-400 font-bold ml-1">+{{ Auth::user()->bonus_xu }}</span></p>
                 </div>
             </div>
             <form method="POST" action="{{ url('/logout') }}" class="mt-2">
@@ -73,10 +76,10 @@
             
             <div class="flex items-center gap-4">
                 @auth
-                <div class="flex items-center gap-2 bg-purple-900/50 px-3 py-1.5 rounded-full border border-purple-500/30">
-                    <i class="fas fa-coins text-yellow-400"></i>
-                    <span class="font-bold xu-balance-display">{{ Auth::user()->xu_balance }} Xu</span>
-                </div>
+                <a href="{{ route('packages.index') }}" class="flex items-center gap-2 bg-purple-900/50 px-3 py-1.5 rounded-full border border-purple-500/30 hover:bg-purple-700 transition">
+                    <i class="fas fa-plus-circle text-green-400"></i>
+                    <span class="font-bold xu-balance-display text-white">{{ Auth::user()->xu_balance }} Xu <span class="text-yellow-400 ml-1">+{{ Auth::user()->bonus_xu }}</span></span>
+                </a>
                 @else
                 <nav class="flex items-center gap-4 text-sm font-medium">
                     <a href="{{ url('/login') }}" class="hover:text-purple-200">Đăng nhập</a>

@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'google_id',
         'xu_balance',
+        'bonus_xu',
         'role',
         'blocked_at',
     ];
@@ -49,6 +50,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'blocked_at' => 'datetime',
         'xu_balance' => 'integer',
+        'bonus_xu' => 'integer',
     ];
 
     public function transactions()
@@ -68,7 +70,24 @@ class User extends Authenticatable
 
     public function hasSufficientXu(int $cost): bool
     {
-        return $this->xu_balance >= $cost;
+        return ($this->xu_balance + $this->bonus_xu) >= $cost;
+    }
+
+    public function deductXu(int $cost): void
+    {
+        if ($this->bonus_xu >= $cost) {
+            $this->decrement('bonus_xu', $cost);
+        } else {
+            $remainingCost = $cost - $this->bonus_xu;
+            $this->update(['bonus_xu' => 0]);
+            $this->decrement('xu_balance', $remainingCost);
+        }
+    }
+
+    public function refundXu(int $cost): void
+    {
+        // Khi hoàn tiền, hệ thống mặc định ưu tiên cộng lại vào xu chính
+        $this->increment('xu_balance', $cost);
     }
 
     public function isBlocked(): bool

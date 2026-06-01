@@ -38,6 +38,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/download/status', [DownloadController::class, 'status'])->name('downloads.status');
     Route::post('/download/poll-status', [DownloadController::class, 'status'])->name('downloads.poll_status');
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    
+    Route::get('/packages', [\App\Http\Controllers\PackageController::class, 'index'])->name('packages.index');
+    Route::post('/packages/status', [\App\Http\Controllers\PackageController::class, 'status'])->name('packages.status');
 });
 
 Route::post('/webhook/web2m', [WebhookController::class, 'web2m'])->name('webhook.web2m');
