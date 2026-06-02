@@ -19,11 +19,11 @@ class GoogleDriveController extends Controller
         return $provider
             ->redirectUrl(route('admin.google.drive.callback'))
             ->with(['access_type' => 'offline', 'prompt' => 'consent'])
-            ->scopes([
+                        ->scopes([
                 'openid',
                 'profile',
                 'email',
-                'https://www.googleapis.com/auth/drive',
+                \Google_Service_Drive::DRIVE, // Quyền full control Drive
             ])
             ->redirect();
     }
