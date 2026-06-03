@@ -54,7 +54,7 @@ class DownloadController extends Controller
                 // Xử lý Cache Hit
         if ($resource && filled($resource->google_drive_link)) {
             $resource->increment('download_count');
-            $user->decrement('xu_balance', $downloadFee);
+            $xuSource = $user->deductXu($downloadFee);
 
                         // Share file cho user cụ thể khi lấy từ cache
             $fileId = $resource->google_drive_file_id;
@@ -97,7 +97,7 @@ class DownloadController extends Controller
             'is_premium' => $isPre === 1,
         ]);
 
-        $user->decrement('xu_balance', $downloadFee);
+        $xuSource = $user->deductXu($downloadFee);
 
         try {
             // Lấy Info cơ bản siêu nhanh
@@ -172,7 +172,8 @@ class DownloadController extends Controller
         } catch (\Throwable $exception) {
             Log::error('Getstock error', ['error' => $exception->getMessage(), 'user_id' => $user->id, 'link' => $link]);
             $history->update(['status' => 'failed']);
-            $user->increment('xu_balance', $downloadFee);
+            $user->refresh();
+            $user->refundXu($downloadFee, $xuSource ?? 'balance');
 
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Lỗi kết nối Getstock, vui lòng thử lại sau. Xu của bạn đã được hoàn lại.']);

@@ -70,23 +70,31 @@ class User extends Authenticatable
 
     public function hasSufficientXu(int $cost): bool
     {
-        return ($this->xu_balance + $this->bonus_xu) >= $cost;
+        return $this->bonus_xu >= $cost || $this->xu_balance >= $cost;
     }
 
-    public function deductXu(int $cost): void
+    public function deductXu(int $cost): string
     {
         if ($this->bonus_xu >= $cost) {
             $this->decrement('bonus_xu', $cost);
-        } else {
-            $remainingCost = $cost - $this->bonus_xu;
-            $this->update(['bonus_xu' => 0]);
-            $this->decrement('xu_balance', $remainingCost);
+            return 'bonus';
         }
+
+        if ($this->xu_balance >= $cost) {
+            $this->decrement('xu_balance', $cost);
+            return 'balance';
+        }
+
+        throw new \RuntimeException('Không đủ xu để trừ.');
     }
 
-    public function refundXu(int $cost): void
+    public function refundXu(int $cost, string $source = 'balance'): void
     {
-        // Khi hoàn tiền, hệ thống mặc định ưu tiên cộng lại vào xu chính
+        if ($source === 'bonus') {
+            $this->increment('bonus_xu', $cost);
+            return;
+        }
+
         $this->increment('xu_balance', $cost);
     }
 
