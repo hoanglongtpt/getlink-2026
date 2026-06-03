@@ -66,7 +66,7 @@
                 <div>
                     <label for="ispre" class="block text-sm font-medium text-gray-700 mb-1">Resource type</label>
                     <select id="ispre" name="ispre" class="w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 transition outline-none bg-white" required>
-                        <option value="0"{{ old('ispre') === '0' ? ' selected' : '' }}>Normal</option>
+                        {{-- <option value="0"{{ old('ispre') === '0' ? ' selected' : '' }}>Normal</option> --}}
                         <option value="1"{{ old('ispre') === '1' ? ' selected' : '' }}>Premium</option>
                     </select>
                 </div>
