@@ -61,6 +61,7 @@
                             <th class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Mã giao dịch</th>
                             <th class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Số tiền (VND)</th>
                             <th class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Xu nhận được</th>
+                            <th class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Trạng thái</th>
                             <th class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Thời gian</th>
                         </tr>
                     </thead>
@@ -72,10 +73,13 @@
                             <td class="px-8 py-5">
                                 <span class="font-black text-green-600">+{{ number_format($tx->xu_amount) }} Xu</span>
                             </td>
+                            <td class="px-8 py-5">
+                                <span class="inline-flex items-center rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-purple-700">{{ strtoupper($tx->status) }}</span>
+                            </td>
                             <td class="px-8 py-5 text-gray-400">{{$tx->created_at->format('H:i d/m/Y')}}</td>
                         </tr>
                         @empty
-                        <tr id="emptyTxRow"><td colspan="4" class="px-8 py-16 text-center text-gray-400 italic">Bạn chưa thực hiện giao dịch nạp nào.</td></tr>
+                        <tr id="emptyTxRow"><td colspan="5" class="px-8 py-16 text-center text-gray-400 italic">Bạn chưa thực hiện giao dịch nạp nào.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -270,12 +274,13 @@
         const empty = document.getElementById("emptyTxRow"); 
         if (empty) empty.remove();
         
-        const tr = document.createElement("tr");
+        const statusLabel = tx.status ? tx.status.toUpperCase() : 'COMPLETED';
         tr.className = "bg-green-50 animate-pulse transition duration-1000";
         tr.innerHTML = `
             <td class="px-8 py-5 font-mono text-xs text-gray-600">${tx.transaction_code}</td>
             <td class="px-8 py-5 font-bold text-gray-800">${new Intl.NumberFormat('vi-VN').format(tx.amount_vnd)}đ</td>
             <td class="px-8 py-5 font-black text-green-600">+${tx.xu_amount} Xu</td>
+            <td class="px-8 py-5"><span class="inline-flex items-center rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-purple-700">${statusLabel}</span></td>
             <td class="px-8 py-5 text-gray-500 font-bold">Vừa xong</td>
         `;
         table.insertBefore(tr, table.firstChild);
