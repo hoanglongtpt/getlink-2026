@@ -275,6 +275,7 @@
         if (empty) empty.remove();
         
         const statusLabel = tx.status ? tx.status.toUpperCase() : 'COMPLETED';
+        const tr = document.createElement("tr");
         tr.className = "bg-green-50 animate-pulse transition duration-1000";
         tr.innerHTML = `
             <td class="px-8 py-5 font-mono text-xs text-gray-600">${tx.transaction_code}</td>
