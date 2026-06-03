@@ -32,15 +32,15 @@ class WebhookController extends Controller
             return response()->json(['message' => 'Access Token không hợp lệ.'], 401);
         }
 
-        Log::info('Web2m webhook received', [
-            'headers' => [
-                'authorization' => $authorizationHeader,
-                'x_web2m_signature' => $request->header('X-Web2m-Signature'),
-                'web2m_signature' => $request->header('Web2m-Signature'),
-                'x_signature' => $request->header('X-Signature'),
-            ],
-            'payload' => $request->all(),
-        ]);
+        // Log::info('Web2m webhook received', [
+        //     'headers' => [
+        //         'authorization' => $authorizationHeader,
+        //         'x_web2m_signature' => $request->header('X-Web2m-Signature'),
+        //         'web2m_signature' => $request->header('Web2m-Signature'),
+        //         'x_signature' => $request->header('X-Signature'),
+        //     ],
+        //     'payload' => $request->all(),
+        // ]);
 
         $data = $request->input('data', []);
         if (!is_array($data)) {
