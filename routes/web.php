@@ -41,6 +41,11 @@ Route::middleware(['auth'])->group(function () {
     
     Route::get('/packages', [\App\Http\Controllers\PackageController::class, 'index'])->name('packages.index');
     Route::post('/packages/status', [\App\Http\Controllers\PackageController::class, 'status'])->name('packages.status');
+    
+    // Payment routes
+    Route::get('/payment/packages', [\App\Http\Controllers\PaymentController::class, 'getPackages'])->name('payment.packages');
+    Route::post('/payment/initiate', [\App\Http\Controllers\PaymentController::class, 'initiate'])->name('payment.initiate');
+    Route::post('/payment/status', [\App\Http\Controllers\PaymentController::class, 'checkStatus'])->name('payment.status');
 });
 
 Route::post('/webhook/web2m', [WebhookController::class, 'web2m'])->name('webhook.web2m');

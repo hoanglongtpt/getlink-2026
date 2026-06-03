@@ -17,7 +17,15 @@ class PackageController extends Controller
             ->take(5)
             ->get();
 
-        return view('packages.index', compact('recentTransactions'));
+        $web2mDetails = [
+            'bank_name' => config('web2m.bank_name', 'MB-BANK'),
+            'bank_code' => config('web2m.bank_code', 'MBB'),
+            'account_number' => config('web2m.account_number', '9999928071998'),
+            'account_holder' => config('web2m.account_holder', 'PHAM XUAN QUY'),
+            'transfer_content_prefix' => config('web2m.transfer_content_prefix', 'id'),
+        ];
+
+        return view('packages.index', compact('recentTransactions', 'web2mDetails'));
     }
 
     public function status()

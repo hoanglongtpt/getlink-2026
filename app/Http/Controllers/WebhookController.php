@@ -2,105 +2,97 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Transaction;
-use App\Models\User;
+use App\Services\Web2mService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
-        public function web2m(Request $request)
+    protected Web2mService $web2mService;
+
+    public function __construct(Web2mService $web2mService)
     {
-        $secret = env('WEB2M_WEBHOOK_SECRET');
-        $payload = $request->all();
+        $this->web2mService = $web2mService;
+    }
 
-        if ($secret) {
-            $signature = $request->header('X-Web2m-Signature')
-                ?? $request->header('Web2m-Signature')
-                ?? $request->header('X-Signature');
+    /**
+     * Handle Web2m payment webhook
+     */
+    public function web2m(Request $request)
+    {
+        $accessToken = config('web2m.access_token');
+        $authorizationHeader = $request->header('Authorization');
 
-            if (! $signature) {
-                Log::warning('Web2m webhook missing signature', $payload);
+        if (!$authorizationHeader || !str_starts_with($authorizationHeader, 'Bearer ')) {
+            return response()->json(['message' => 'Access Token không được cung cấp hoặc không hợp lệ.'], 401);
+        }
 
-                return response()->json(['message' => 'Missing webhook signature'], 403);
+        $bearerToken = substr($authorizationHeader, 7);
+        if ($bearerToken !== $accessToken) {
+            return response()->json(['message' => 'Access Token không hợp lệ.'], 401);
+        }
+
+        $data = $request->input('data', []);
+        if (!is_array($data)) {
+            return response()->json(['message' => 'Payload data không hợp lệ.'], 422);
+        }
+
+        foreach ($data as $transactionItem) {
+            $description = $transactionItem['description'] ?? '';
+            $idCode = null;
+
+            if (preg_match('/napxugetlink(\d+)/i', $description, $matches)) {
+                $idCode = 'napxugetlink' . $matches[1];
+            } elseif (preg_match('/id(\d+)/i', $description, $matches)) {
+                $idCode = 'id' . $matches[1];
             }
 
-            $payloadJson = $request->getContent();
-            $expectedSignature = hash_hmac('sha256', $payloadJson, $secret);
-
-            if (! hash_equals($expectedSignature, $signature)) {
-                Log::warning('Web2m webhook invalid signature', [
-                    'expected' => $expectedSignature,
-                    'received' => $signature,
-                ]);
-
-                return response()->json(['message' => 'Invalid webhook signature'], 403);
+            if (! $idCode) {
+                Log::warning("Không tìm thấy mã napxugetlink/id trong description: {$description}");
+                continue;
             }
-        } else {
-            Log::warning('WEB2M_WEBHOOK_SECRET is not configured. Webhook signature was not validated.');
+
+            $transaction = \App\Models\Transaction::where('description', $idCode)
+                ->orderByDesc('id')
+                ->first();
+
+            if (! $transaction) {
+                Log::warning("Không tìm thấy transaction cho mã {$idCode}");
+                continue;
+            }
+
+            if ($transaction->status === 'completed') {
+                continue;
+            }
+
+            $amountVnd = (int) ($transactionItem['amount'] ?? 0);
+            if ($transaction->amount_vnd !== $amountVnd) {
+                Log::warning("Số tiền webhook ({$amountVnd}) không khớp với gói đăng ký ({$transaction->amount_vnd}) cho mã {$idCode}");
+                continue;
+            }
+
+            $xuInfo = $this->web2mService->calculateXu($amountVnd);
+            $totalXu = $xuInfo['xu_main'] + $xuInfo['xu_bonus'];
+
+            $transaction->status = 'completed';
+            $transaction->xu_amount = $totalXu;
+            $transaction->metadata = array_merge($transaction->metadata ?? [], [
+                'web2m_payload' => $transactionItem,
+                'xu_main' => $xuInfo['xu_main'],
+                'xu_bonus' => $xuInfo['xu_bonus'],
+            ]);
+            $transaction->save();
+
+            $user = $transaction->user;
+            if ($user) {
+                $user->increment('xu_balance', $xuInfo['xu_main']);
+                $user->increment('bonus_xu', $xuInfo['xu_bonus']);
+            }
         }
 
-        Log::info('Web2m webhook received', $payload);
-
-        // Web2m thường gửi amount và description
-        // Giả sử Web2m gửi email hoặc description có chứa NAPXU {ID}
-        $transactionCode = $payload['transaction_code'] ?? $payload['id'] ?? null;
-        $amountVnd = (int) ($payload['amount_vnd'] ?? $payload['amount'] ?? 0);
-        $description = $payload['description'] ?? '';
-
-        if (!$transactionCode || $amountVnd <= 0) {
-            return response()->json(['message' => 'Invalid webhook payload'], 422);
-        }
-
-        // Tìm user từ description: NAPXU 123
-        $userId = null;
-        if (preg_match('/NAPXU\s+(\d+)/i', $description, $matches)) {
-            $userId = $matches[1];
-        }
-
-        $user = $userId ? User::find($userId) : User::where('email', $payload['email'] ?? '')->first();
-
-        if (! $user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
-
-        // Logic tính toán Xu và Thưởng dựa trên bảng giá
-        $xuMain = 0;
-        $xuBonus = 0;
-
-        if ($amountVnd >= 500000) {
-            $xuMain = 500;
-            $xuBonus = 100;
-        } elseif ($amountVnd >= 200000) {
-            $xuMain = 200;
-            $xuBonus = 30;
-        } elseif ($amountVnd >= 100000) {
-            $xuMain = 100;
-            $xuBonus = 10;
-        } elseif ($amountVnd >= 20000) {
-            $xuMain = 20;
-            $xuBonus = 0;
-        } else {
-            // Nạp lẻ: 1000đ = 1 xu
-            $xuMain = (int)($amountVnd / 1000);
-            $xuBonus = 0;
-        }
-
-        $transaction = Transaction::updateOrCreate([
-            'transaction_code' => $transactionCode,
-        ], [
-            'user_id' => $user->id,
-            'amount_vnd' => $amountVnd,
-            'xu_amount' => $xuMain + $xuBonus,
-            'status' => 'completed',
-            'payment_method' => 'web2m',
-            'type' => 'top_up',
-            'metadata' => array_merge($payload, ['xu_main' => $xuMain, 'xu_bonus' => $xuBonus]),
+        return response()->json([
+            'status' => true,
+            'msg' => 'Ok',
         ]);
-
-        $user->increment('xu_balance', $xuMain);
-        $user->increment('bonus_xu', $xuBonus);
-
-        return response()->json(['message' => 'Balance updated', 'xu' => $xuMain, 'bonus' => $xuBonus]);
     }
 }

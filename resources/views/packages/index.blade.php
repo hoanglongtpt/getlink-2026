@@ -126,7 +126,7 @@
 
 <!-- Modal Thanh toán -->
 <div id="paymentModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 hidden opacity-0 transition-opacity duration-300 p-4 backdrop-blur-sm">
-    <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform scale-90 transition-all duration-300" id="paymentModalContent">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden transform scale-90 transition-all duration-300" id="paymentModalContent">
         <!-- Header -->
         <div class="bg-gradient-to-r from-purple-700 to-indigo-800 px-8 py-8 text-white flex justify-between items-center relative">
             <div class="flex flex-col">
@@ -138,37 +138,45 @@
             </button>
         </div>
         
-        <div class="px-10 py-8 text-center">
+        <div class="px-6 py-6 text-center">
             <!-- Amount -->
-            <div class="bg-purple-50 px-8 py-5 rounded-3xl border border-purple-100 inline-block mb-8 shadow-inner transform -rotate-1">
+            <div class="bg-purple-50 px-6 py-4 rounded-3xl border border-purple-100 inline-block mb-6 shadow-inner transform -rotate-1">
                 <p class="text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-1">Số tiền thanh toán</p>
                 <p class="text-4xl font-black text-purple-700" id="modalAmount">0đ</p>
             </div>
-
+            
             <!-- QR Section -->
             <div class="flex justify-center mb-8 relative group">
-                <div class="absolute -inset-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[2rem] blur opacity-10 group-hover:opacity-20 transition"></div>
-                <div class="relative bg-white p-4 rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden">
-                    <img id="qrImage" src="https://placehold.co/400x400/f3e8ff/6b21a8?text=Loading+QR..." class="w-56 h-56 object-cover rounded-2xl shadow-inner">
+                <div class="absolute -inset-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[1.75rem] blur opacity-10 group-hover:opacity-20 transition"></div>
+                <div class="relative bg-white p-4 rounded-[1.75rem] border border-gray-100 shadow-xl overflow-hidden">
+                    <img id="qrImage" loading="eager" src="{{ $qrCodeUrl ?? 'https://placehold.co/320x320/f3e8ff/6b21a8?text=Loading+QR...' }}" class="w-56 h-56 md:w-64 md:h-64 object-cover rounded-2xl shadow-inner" alt="QR Code">
                     <div class="absolute bottom-0 inset-x-0 h-1.5 bg-gradient-to-r from-purple-600 via-indigo-500 to-purple-600 animate-pulse"></div>
                 </div>
             </div>
 
             <!-- Payment Details -->
             <div class="space-y-3 mb-8 text-left">
-                <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-200 transition-colors cursor-pointer group" onclick="copyToClipboard('0123456789')">
+                <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-200 transition-colors">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Ngân hàng</p>
+                    <p class="font-black text-gray-800 text-lg" id="modalBankName">MB-BANK</p>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-200 transition-colors">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Chủ tài khoản</p>
+                    <p class="font-black text-gray-800 text-lg" id="modalAccountHolder">PHAM XUAN QUY</p>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-200 transition-colors cursor-pointer" onclick="copyToClipboard(document.getElementById('modalAccountNumber').innerText)">
                     <div class="flex justify-between items-center">
-                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Tài khoản MB Bank</p>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Số tài khoản</p>
                         <i class="far fa-copy text-purple-400 group-hover:text-purple-600"></i>
                     </div>
-                    <p class="font-bold text-gray-800 text-lg">0123456789 <span class="text-gray-400 font-normal ml-2">- NGUYEN VAN A</span></p>
+                    <p class="font-black text-gray-800 text-lg" id="modalAccountNumber">9999928071998</p>
                 </div>
-                <div class="p-4 bg-red-50 rounded-2xl border border-red-100 hover:border-red-300 transition-colors cursor-pointer group" onclick="copyToClipboard(document.getElementById('modalSyntax').innerText)">
+                <div class="p-4 bg-red-50 rounded-2xl border border-red-100 hover:border-red-300 transition-colors cursor-pointer" onclick="copyToClipboard(document.getElementById('modalTransferContent').innerText)">
                     <div class="flex justify-between items-center">
-                        <p class="text-[10px] text-red-400 font-bold uppercase tracking-widest mb-0.5">Nội dung bắt buộc</p>
+                        <p class="text-[10px] text-red-400 font-bold uppercase tracking-widest mb-0.5">Nội dung chuyển khoản</p>
                         <i class="far fa-copy text-red-400 group-hover:text-red-600"></i>
                     </div>
-                    <p class="font-black text-red-600 text-2xl tracking-tighter" id="modalSyntax">NAPXU {{ Auth::user()->id }}</p>
+                    <p class="font-black text-red-600 text-2xl tracking-tighter" id="modalTransferContent">{{ $web2mDetails['transfer_content_prefix'] ?? 'id' }}{{ Auth::user()->id }}</p>
                 </div>
             </div>
 
@@ -186,23 +194,69 @@
 </div>
 
 <script>
+    @php
+        $web2mDetails = $web2mDetails ?? [
+            'bank_name' => 'MB-BANK',
+            'bank_code' => 'MBB',
+            'account_number' => '9999928071998',
+            'account_holder' => 'PHAM XUAN QUY',
+            'transfer_content_prefix' => 'id',
+        ];
+    @endphp
+    const web2mDetails = @json($web2mDetails);
+    const web2mUserId = {{ Auth::user()->id }};
     let lastTotalXu = {{ Auth::user()->xu_balance + Auth::user()->bonus_xu }};
     let pollingInterval = null;
 
-    function openPaymentModal(amount, xu, packageName) {
+    async function openPaymentModal(amount, xu, packageName) {
         const modal = document.getElementById('paymentModal');
         const modalContent = document.getElementById('paymentModalContent');
         const qrImage = document.getElementById('qrImage');
         
         document.getElementById('modalTitle').innerText = packageName;
         document.getElementById('modalAmount').innerText = new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+
+        document.getElementById('modalBankName').innerText = web2mDetails.bank_name;
+        document.getElementById('modalAccountHolder').innerText = web2mDetails.account_holder;
+        document.getElementById('modalAccountNumber').innerText = web2mDetails.account_number;
+        document.getElementById('modalTransferContent').innerText = `${web2mDetails.transfer_content_prefix}${web2mUserId}`;
+        qrImage.src = 'https://placehold.co/320x320/f3e8ff/6b21a8?text=Loading+QR...';
         
-        const bankId = '970422'; 
-        const accountNo = '0123456789';
-        const accountName = 'NGUYEN VAN A';
-        const content = 'NAPXU {{ Auth::user()->id }}';
-        
-        qrImage.src = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(accountName)}`;
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-90');
+        }, 10);
+
+        const response = await fetch("{{ route('payment.initiate') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ amount_vnd: amount }),
+        });
+
+        if (!response.ok) {
+            const msg = await response.text();
+            alert('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
+            console.error('Payment initiate failed:', response.status, msg);
+            closePaymentModal();
+            return;
+        }
+
+        const data = await response.json();
+        if (!data.success) {
+            alert('Không thể tạo đơn thanh toán. Vui lòng thử lại.');
+            closePaymentModal();
+            return;
+        }
+
+        qrImage.src = data.qr_url;
+        qrImage.onerror = () => {
+            qrImage.src = 'https://placehold.co/320x320/f3e8ff/6b21a8?text=QR+Load+Failed';
+        };
         
         modal.classList.remove('hidden');
         setTimeout(() => {
@@ -225,7 +279,7 @@
         if (pollingInterval) return;
         pollingInterval = setInterval(async () => {
             try {
-                const response = await fetch("{{ route('packages.status') }}", { 
+                const response = await fetch("{{ route('payment.status') }}", { 
                     method: 'POST', 
                     headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
                 });
