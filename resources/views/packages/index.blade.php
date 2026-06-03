@@ -14,80 +14,40 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Gói 1 -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-xl transition-all duration-300 relative group overflow-hidden">
-            <div class="p-6 text-center border-b border-gray-50">
-                <h3 class="text-lg font-bold text-gray-800 uppercase mb-2">Gói Trải Nghiệm</h3>
-                <p class="text-4xl font-black text-purple-600">20k</p>
-                <p class="text-xs text-gray-400 mt-2 italic font-medium text-purple-400">Tổng nhận: 20 xu</p>
+        @forelse($packages as $package)
+            @php
+                $isPopular = !empty($package['is_popular']);
+                $totalXu = ($package['xu_main'] ?? 0) + ($package['xu_bonus'] ?? 0);
+            @endphp
+            <div class="{{ $isPopular ? 'bg-gradient-to-b from-purple-600 to-purple-800 text-white shadow-lg border-0 transform md:-translate-y-4 hover:shadow-purple-200' : 'bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-xl transition-all duration-300 relative group overflow-hidden' }}">
+                @if($isPopular)
+                    <div class="absolute top-0 inset-x-0 -translate-y-1/2 flex justify-center">
+                        <span class="bg-yellow-400 text-yellow-900 text-[10px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-lg border-2 border-white animate-pulse">Phổ biến nhất</span>
+                    </div>
+                @endif
+                <div class="p-6 text-center border-b {{ $isPopular ? 'border-purple-500/20' : 'border-gray-50' }} {{ $isPopular ? 'text-white mt-4' : '' }}">
+                    <h3 class="text-lg font-bold uppercase mb-2 tracking-wide">{{ $package['name'] }}</h3>
+                    @if(!empty($package['description']))
+                        <p class="text-sm {{ $isPopular ? 'text-purple-200' : 'text-gray-500' }} mb-3">{{ $package['description'] }}</p>
+                    @endif
+                    <p class="text-4xl font-black {{ $isPopular ? 'text-white' : 'text-purple-600' }}">{{ number_format($package['amount_vnd']) }}đ</p>
+                    <p class="text-xs {{ $isPopular ? 'text-purple-200' : 'text-gray-400' }} mt-2 italic font-bold">Tổng nhận: {{ number_format($totalXu) }} xu</p>
+                </div>
+                <div class="flex-1 p-6 {{ $isPopular ? 'text-white' : '' }} flex flex-col">
+                    <ul class="space-y-3 text-sm mb-8">
+                        <li class="flex items-center gap-2"><i class="fas fa-check-circle {{ $isPopular ? 'text-yellow-400' : 'text-green-500' }}"></i> {{ number_format($package['xu_main']) }} xu chính</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-plus-circle {{ $isPopular ? 'text-yellow-400' : 'text-orange-500' }} font-bold"></i> <strong>Tặng thêm {{ number_format($package['xu_bonus']) }} xu</strong></li>
+                        <li class="flex items-center gap-2"><i class="fas fa-headset {{ $isPopular ? 'text-purple-300' : 'text-gray-300' }}"></i> Hỗ trợ 24/7</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-infinity {{ $isPopular ? 'text-purple-300' : 'text-gray-300' }}"></i> Không thời hạn</li>
+                    </ul>
+                    <button onclick='openPaymentModal({{ $package['amount_vnd'] }}, {{ $totalXu }}, @json($package['name']))' class="w-full mt-auto {{ $isPopular ? 'bg-white text-purple-700 hover:bg-yellow-400 hover:text-yellow-900' : 'bg-purple-50 text-purple-700 group-hover:bg-purple-600 group-hover:text-white' }} font-bold py-3 px-4 rounded-xl transition duration-300 shadow-sm {{ $isPopular ? 'shadow-xl transform group-hover:scale-105' : 'transform group-hover:-translate-y-1' }}">CHỌN GÓI NÀY</button>
+                </div>
             </div>
-            <div class="flex-1 p-6 flex flex-col">
-                <ul class="space-y-3 text-sm text-gray-600 mb-8">
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> 20 xu chính</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> 0 xu thưởng</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-headset text-gray-300"></i> Hỗ trợ 24/7</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-infinity text-gray-300"></i> Không thời hạn</li>
-                </ul>
-                <button onclick="openPaymentModal(20000, 20, 'Gói Trải Nghiệm')" class="w-full mt-auto bg-purple-50 text-purple-700 group-hover:bg-purple-600 group-hover:text-white font-bold py-3 px-4 rounded-xl transition duration-300 shadow-sm transform group-hover:-translate-y-1">CHỌN GÓI NÀY</button>
+        @empty
+            <div class="col-span-1 md:col-span-2 lg:col-span-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+                Chưa có gói nạp nào được cấu hình. Vui lòng liên hệ quản trị viên.
             </div>
-        </div>
-
-        <!-- Gói 2 - Popular -->
-        <div class="bg-gradient-to-b from-purple-600 to-purple-800 rounded-2xl shadow-lg border-0 flex flex-col transform md:-translate-y-4 relative group transition-all duration-300 hover:shadow-purple-200">
-            <div class="absolute top-0 inset-x-0 -translate-y-1/2 flex justify-center">
-                <span class="bg-yellow-400 text-yellow-900 text-[10px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-lg border-2 border-white animate-pulse">Phổ biến nhất</span>
-            </div>
-            <div class="p-6 text-center border-b border-purple-500/20 text-white mt-4">
-                <h3 class="text-lg font-bold uppercase mb-2 tracking-wide">Gói Tiết Kiệm</h3>
-                <p class="text-4xl font-black text-white">100k</p>
-                <p class="text-xs text-purple-200 mt-2 italic font-bold">Tổng nhận: 110 xu</p>
-            </div>
-            <div class="flex-1 p-6 text-white flex flex-col">
-                <ul class="space-y-3 text-sm mb-8">
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-yellow-400"></i> 100 xu chính</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-plus-circle text-yellow-400"></i> <strong>Tặng thêm 10 xu</strong></li>
-                    <li class="flex items-center gap-2"><i class="fas fa-headset text-purple-300"></i> Hỗ trợ 24/7</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-infinity text-purple-300"></i> Không thời hạn</li>
-                </ul>
-                <button onclick="openPaymentModal(100000, 110, 'Gói Tiết Kiệm')" class="w-full mt-auto bg-white text-purple-700 hover:bg-yellow-400 hover:text-yellow-900 font-black py-3.5 px-4 rounded-xl shadow-xl transition duration-200 transform group-hover:scale-105">CHỌN GÓI NÀY</button>
-            </div>
-        </div>
-
-        <!-- Gói 3 -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-xl transition-all duration-300 relative group overflow-hidden">
-            <div class="p-6 text-center border-b border-gray-50">
-                <h3 class="text-lg font-bold text-gray-800 uppercase mb-2">Gói Bán Chuyên</h3>
-                <p class="text-4xl font-black text-purple-600">200k</p>
-                <p class="text-xs text-gray-400 mt-2 italic font-medium text-purple-400">Tổng nhận: 230 xu</p>
-            </div>
-            <div class="flex-1 p-6 flex flex-col">
-                <ul class="space-y-3 text-sm text-gray-600 mb-8">
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> 200 xu chính</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-plus-circle text-orange-500 font-bold"></i> <strong>Tặng thêm 30 xu</strong></li>
-                    <li class="flex items-center gap-2"><i class="fas fa-headset text-gray-300"></i> Hỗ trợ 24/7</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-infinity text-gray-300"></i> Không thời hạn</li>
-                </ul>
-                <button onclick="openPaymentModal(200000, 230, 'Gói Bán Chuyên')" class="w-full mt-auto bg-purple-50 text-purple-700 group-hover:bg-purple-600 group-hover:text-white font-bold py-3 px-4 rounded-xl transition duration-300 shadow-sm transform group-hover:-translate-y-1">CHỌN GÓI NÀY</button>
-            </div>
-        </div>
-
-        <!-- Gói 4 -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-xl transition-all duration-300 relative group overflow-hidden border-t-4 border-t-purple-600">
-            <div class="p-6 text-center border-b border-gray-50">
-                <h3 class="text-lg font-bold text-gray-800 uppercase mb-2">Gói Chuyên Nghiệp</h3>
-                <p class="text-4xl font-black text-purple-600">500k</p>
-                <p class="text-xs text-gray-400 mt-2 italic font-medium text-purple-400">Tổng nhận: 600 xu</p>
-            </div>
-            <div class="flex-1 p-6 flex flex-col">
-                <ul class="space-y-3 text-sm text-gray-600 mb-8">
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> 500 xu chính</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-plus-circle text-orange-500 font-bold"></i> <strong>Tặng thêm 100 xu</strong></li>
-                    <li class="flex items-center gap-2"><i class="fas fa-headset text-gray-300"></i> Hỗ trợ 24/7</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-infinity text-gray-300"></i> Không thời hạn</li>
-                </ul>
-                <button onclick="openPaymentModal(500000, 600, 'Gói Chuyên Nghiệp')" class="w-full mt-auto bg-purple-50 text-purple-700 group-hover:bg-purple-600 group-hover:text-white font-bold py-3 px-4 rounded-xl transition duration-300 shadow-sm transform group-hover:-translate-y-1">CHỌN GÓI NÀY</button>
-            </div>
-        </div>
+        @endforelse
     </div>
 
     <!-- Recent History Section -->
@@ -144,7 +104,7 @@
                 <p class="text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-1">Số tiền thanh toán</p>
                 <p class="text-4xl font-black text-purple-700" id="modalAmount">0đ</p>
             </div>
-            
+
             <!-- QR Section -->
             <div class="flex justify-center mb-8 relative group">
                 <div class="absolute -inset-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[1.75rem] blur opacity-10 group-hover:opacity-20 transition"></div>

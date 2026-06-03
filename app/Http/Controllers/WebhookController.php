@@ -39,25 +39,29 @@ class WebhookController extends Controller
 
         foreach ($data as $transactionItem) {
             $description = $transactionItem['description'] ?? '';
-            $idCode = null;
+            $transactionCode = $transactionItem['transaction_code'] ?? $transactionItem['id'] ?? null;
+            $amountVnd = (int) ($transactionItem['amount'] ?? $transactionItem['amount_vnd'] ?? 0);
 
-            if (preg_match('/napxugetlink(\d+)/i', $description, $matches)) {
-                $idCode = 'napxugetlink' . $matches[1];
-            } elseif (preg_match('/id(\d+)/i', $description, $matches)) {
-                $idCode = 'id' . $matches[1];
-            }
-
-            if (! $idCode) {
-                Log::warning("Không tìm thấy mã napxugetlink/id trong description: {$description}");
+            if ($amountVnd <= 0) {
+                Log::warning('Webhook payload missing amount_vnd or amount', ['payload' => $transactionItem]);
                 continue;
             }
 
-            $transaction = \App\Models\Transaction::where('description', $idCode)
-                ->orderByDesc('id')
-                ->first();
+            $transaction = null;
+            if ($transactionCode) {
+                $transaction = \App\Models\Transaction::where('transaction_code', $transactionCode)->first();
+            }
+
+            if (! $transaction && preg_match('/napxugetlink(\d+)/i', $description, $matches)) {
+                $transaction = \App\Models\Transaction::where('description', 'napxugetlink' . $matches[1])->latest()->first();
+            }
+
+            if (! $transaction && preg_match('/id(\d+)/i', $description, $matches)) {
+                $transaction = \App\Models\Transaction::where('description', 'id' . $matches[1])->latest()->first();
+            }
 
             if (! $transaction) {
-                Log::warning("Không tìm thấy transaction cho mã {$idCode}");
+                Log::warning('Không tìm thấy transaction tương ứng cho webhook', ['description' => $description, 'transaction_code' => $transactionCode]);
                 continue;
             }
 
@@ -65,28 +69,37 @@ class WebhookController extends Controller
                 continue;
             }
 
-            $amountVnd = (int) ($transactionItem['amount'] ?? 0);
             if ($transaction->amount_vnd !== $amountVnd) {
-                Log::warning("Số tiền webhook ({$amountVnd}) không khớp với gói đăng ký ({$transaction->amount_vnd}) cho mã {$idCode}");
+                Log::warning('Số tiền webhook không khớp với gói đã chọn', [
+                    'expected' => $transaction->amount_vnd,
+                    'received' => $amountVnd,
+                    'transaction_id' => $transaction->id,
+                ]);
                 continue;
             }
 
-            $xuInfo = $this->web2mService->calculateXu($amountVnd);
-            $totalXu = $xuInfo['xu_main'] + $xuInfo['xu_bonus'];
+            $xuMain = $transaction->metadata['xu_main'] ?? null;
+            $xuBonus = $transaction->metadata['xu_bonus'] ?? null;
+            if ($xuMain === null || $xuBonus === null) {
+                $xuInfo = $this->web2mService->calculateXu($amountVnd);
+                $xuMain = $xuInfo['xu_main'];
+                $xuBonus = $xuInfo['xu_bonus'];
+            }
 
             $transaction->status = 'completed';
-            $transaction->xu_amount = $totalXu;
+            $transaction->xu_amount = $xuMain + $xuBonus;
             $transaction->metadata = array_merge($transaction->metadata ?? [], [
                 'web2m_payload' => $transactionItem,
-                'xu_main' => $xuInfo['xu_main'],
-                'xu_bonus' => $xuInfo['xu_bonus'],
+                'xu_main' => $xuMain,
+                'xu_bonus' => $xuBonus,
+                'completed_at' => now()->toIso8601String(),
             ]);
             $transaction->save();
 
             $user = $transaction->user;
             if ($user) {
-                $user->increment('xu_balance', $xuInfo['xu_main']);
-                $user->increment('bonus_xu', $xuInfo['xu_bonus']);
+                $user->increment('xu_balance', $xuMain);
+                $user->increment('bonus_xu', $xuBonus);
             }
         }
 

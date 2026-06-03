@@ -2,12 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Web2mService;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PackageController extends Controller
 {
+    protected Web2mService $web2mService;
+
+    public function __construct(Web2mService $web2mService)
+    {
+        $this->web2mService = $web2mService;
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -25,7 +33,9 @@ class PackageController extends Controller
             'transfer_content_prefix' => config('web2m.transfer_content_prefix', 'id'),
         ];
 
-        return view('packages.index', compact('recentTransactions', 'web2mDetails'));
+        $packages = $this->web2mService->getPackageInfo();
+
+        return view('packages.index', compact('recentTransactions', 'web2mDetails', 'packages'));
     }
 
     public function status()

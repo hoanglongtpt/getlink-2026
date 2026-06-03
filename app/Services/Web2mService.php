@@ -2,12 +2,48 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 class Web2mService
 {
+    private const DEFAULT_PACKAGES = [
+        [
+            'name' => 'Gói Trải Nghiệm',
+            'amount_vnd' => 20000,
+            'xu_main' => 20,
+            'xu_bonus' => 0,
+            'description' => 'Lý tưởng cho người mới bắt đầu',
+            'is_popular' => false,
+        ],
+        [
+            'name' => 'Gói Tiết Kiệm',
+            'amount_vnd' => 100000,
+            'xu_main' => 100,
+            'xu_bonus' => 10,
+            'description' => 'Phổ biến nhất',
+            'is_popular' => true,
+        ],
+        [
+            'name' => 'Gói Bán Chuyên',
+            'amount_vnd' => 200000,
+            'xu_main' => 200,
+            'xu_bonus' => 30,
+            'description' => 'Phù hợp với bán chuyên',
+            'is_popular' => false,
+        ],
+        [
+            'name' => 'Gói Chuyên Nghiệp',
+            'amount_vnd' => 500000,
+            'xu_main' => 500,
+            'xu_bonus' => 100,
+            'description' => 'Thích hợp cho chuyên nghiệp',
+            'is_popular' => false,
+        ],
+    ];
+
     /**
      * Bảng giá chuyển đổi VND sang Xu
      * Format: [amount_vnd_min => [xu_main, xu_bonus], ...]
@@ -203,32 +239,36 @@ class Web2mService
     }
 
     /**
-     * Format thông tin gói thanh toán để hiển thị
+     * Tìm gói theo số tiền VND đã chọn
+     */
+    public function findPackageByAmount(int $amountVnd): ?array
+    {
+        return collect($this->getPackageInfo())
+            ->firstWhere('amount_vnd', $amountVnd);
+    }
+
+    /**
+     * Lấy thông tin gói thanh toán để hiển thị
      */
     public function getPackageInfo(): array
     {
-        return [
-            [
-                'name' => 'Gói Tiết Kiệm',
-                'amount_vnd' => 100000,
-                'xu_main' => 100,
-                'xu_bonus' => 10,
-                'description' => 'Lý tưởng cho người mới bắt đầu',
-            ],
-            [
-                'name' => 'Gói Bán Chuyên',
-                'amount_vnd' => 200000,
-                'xu_main' => 200,
-                'xu_bonus' => 30,
-                'description' => 'Phù hợp với bán chuyên',
-            ],
-            [
-                'name' => 'Gói Chuyên Nghiệp',
-                'amount_vnd' => 500000,
-                'xu_main' => 500,
-                'xu_bonus' => 100,
-                'description' => 'Thích hợp cho chuyên nghiệp',
-            ],
-        ];
+        $savedPackages = Setting::getValue('payment_packages');
+        if ($savedPackages) {
+            $packages = json_decode($savedPackages, true);
+            if (is_array($packages) && count($packages) > 0) {
+                return array_map(function ($package) {
+                    return [
+                        'name' => isset($package['name']) ? trim((string) $package['name']) : '',
+                        'amount_vnd' => isset($package['amount_vnd']) ? (int) $package['amount_vnd'] : 0,
+                        'xu_main' => isset($package['xu_main']) ? (int) $package['xu_main'] : 0,
+                        'xu_bonus' => isset($package['xu_bonus']) ? (int) $package['xu_bonus'] : 0,
+                        'description' => isset($package['description']) ? trim((string) $package['description']) : '',
+                        'is_popular' => !empty($package['is_popular']),
+                    ];
+                }, $packages);
+            }
+        }
+
+        return self::DEFAULT_PACKAGES;
     }
 }

@@ -43,18 +43,27 @@ class PaymentController extends Controller
     public function initiate(Request $request)
     {
         $request->validate([
-            'amount_vnd' => 'required|integer|min:20000|max:10000000',
+            'amount_vnd' => 'required|integer|min:1000',
         ]);
 
         $user = Auth::user();
         $amountVnd = $request->integer('amount_vnd');
 
+        $package = $this->web2mService->findPackageByAmount($amountVnd);
+        if (! $package) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gói nạp không hợp lệ hoặc đã bị thay đổi. Vui lòng thử lại.',
+            ], 422);
+        }
+
         $orderCode = intval(substr(strval(microtime(true) * 10000), -6));
         $transferPrefix = config('web2m.transfer_content_prefix', 'id');
         $description = $transferPrefix . $user->id;
 
-        $xuInfo = $this->web2mService->calculateXu($amountVnd);
-        $totalXu = $xuInfo['xu_main'] + $xuInfo['xu_bonus'];
+        $xuMain = $package['xu_main'];
+        $xuBonus = $package['xu_bonus'];
+        $totalXu = $xuMain + $xuBonus;
 
         $transaction = \App\Models\Transaction::create([
             'user_id' => $user->id,
@@ -66,8 +75,9 @@ class PaymentController extends Controller
             'payment_method' => 'web2m',
             'type' => 'top_up',
             'metadata' => [
-                'xu_main' => $xuInfo['xu_main'],
-                'xu_bonus' => $xuInfo['xu_bonus'],
+                'package_name' => $package['name'] ?? null,
+                'xu_main' => $xuMain,
+                'xu_bonus' => $xuBonus,
                 'initiated_at' => now()->toIso8601String(),
             ],
         ]);
@@ -84,8 +94,8 @@ class PaymentController extends Controller
             'transaction_id' => $transaction->id,
             'qr_url' => $qrUrl,
             'amount_vnd' => $amountVnd,
-            'xu_main' => $xuInfo['xu_main'],
-            'xu_bonus' => $xuInfo['xu_bonus'],
+            'xu_main' => $xuMain,
+            'xu_bonus' => $xuBonus,
             'total_xu' => $totalXu,
         ]);
     }

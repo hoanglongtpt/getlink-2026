@@ -24,6 +24,43 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-1">Số lượng Xu người dùng bị trừ mỗi khi gửi request tải tài nguyên.</p>
                 </div>
+
+                <div class="bg-white rounded-2xl border border-gray-200 p-4 mt-6">
+                    <h3 class="text-base font-semibold text-gray-800 mb-4">Quản lý gói nạp Xu</h3>
+                    @php $packageDefinitions = old('packages', $packages ?? []); @endphp
+                    @forelse($packageDefinitions as $index => $package)
+                        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 mb-6 p-4 rounded-2xl border border-gray-100 bg-gray-50">
+                            <div class="md:col-span-2 xl:col-span-1">
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Tên gói</label>
+                                <input name="packages[{{ $index }}][name]" type="text" value="{{ old("packages.$index.name", $package['name'] ?? '') }}" class="mt-1 w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Giá (VND)</label>
+                                <input name="packages[{{ $index }}][amount_vnd]" type="number" value="{{ old("packages.$index.amount_vnd", $package['amount_vnd'] ?? '') }}" class="mt-1 w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Xu chính</label>
+                                <input name="packages[{{ $index }}][xu_main]" type="number" value="{{ old("packages.$index.xu_main", $package['xu_main'] ?? '') }}" class="mt-1 w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Xu thưởng</label>
+                                <input name="packages[{{ $index }}][xu_bonus]" type="number" value="{{ old("packages.$index.xu_bonus", $package['xu_bonus'] ?? '') }}" class="mt-1 w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 outline-none">
+                            </div>
+                            <div class="xl:col-span-2">
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Mô tả</label>
+                                <input name="packages[{{ $index }}][description]" type="text" value="{{ old("packages.$index.description", $package['description'] ?? '') }}" class="mt-1 w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 outline-none">
+                            </div>
+                            <div class="flex items-center gap-2 mt-3">
+                                <input id="packages-{{ $index }}-popular" name="packages[{{ $index }}][is_popular]" type="checkbox" value="1" {{ old("packages.$index.is_popular", isset($package['is_popular']) && $package['is_popular'] ? '1' : '') === '1' ? 'checked' : '' }} class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <label for="packages-{{ $index }}-popular" class="text-sm text-gray-600">Gói phổ biến nhất</label>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-sm text-gray-500">Không có gói nạp nào được cấu hình.</div>
+                    @endforelse
+                    <p class="text-xs text-gray-500">Chọn một gói làm gói phổ biến nhất. Nếu nhiều gói được chọn, chỉ gói đầu tiên sẽ được giữ.</p>
+                </div>
+
                 <button type="submit" class="rounded-lg bg-purple-600 px-5 py-2.5 text-white font-medium hover:bg-purple-700 transition shadow-sm flex items-center gap-2">
                     <i class="fas fa-save"></i> Lưu cài đặt
                 </button>
