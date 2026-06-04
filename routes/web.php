@@ -74,6 +74,10 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::get('/users', [AdminController::class, 'users'])->name('admin.users');
     Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('admin.users.edit');
     Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('admin.users.update');
+    Route::get('/download-providers', [AdminController::class, 'downloadProviders'])->name('admin.download-providers');
+    Route::post('/download-providers/import', [AdminController::class, 'importDownloadProviders'])->name('admin.download-providers.import');
+    Route::get('/download-providers/{provider}/edit', [AdminController::class, 'editDownloadProvider'])->name('admin.download-providers.edit');
+    Route::put('/download-providers/{provider}', [AdminController::class, 'updateDownloadProvider'])->name('admin.download-providers.update');
     Route::get('/transactions', [AdminController::class, 'transactions'])->name('admin.transactions');
     Route::get('/resources', [AdminController::class, 'resources'])->name('admin.resources');
     Route::get('/settings', [AdminController::class, 'settings'])->name('admin.settings');

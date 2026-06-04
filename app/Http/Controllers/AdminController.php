@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DownloadHistory;
+use App\Models\DownloadProvider;
 use App\Models\Resource;
 use App\Models\Setting;
 use App\Models\Transaction;
@@ -65,6 +66,81 @@ class AdminController extends Controller
         ]);
 
         return redirect()->route('admin.users')->with('success', 'User updated successfully.');
+    }
+
+    public function downloadProviders(Request $request)
+    {
+        $query = DownloadProvider::query();
+
+        if ($search = $request->input('search')) {
+            $query->where('slug', 'like', "%{$search}%")
+                  ->orWhere('display_name', 'like', "%{$search}%");
+        }
+
+        $providers = $query->orderBy('slug')->paginate(25);
+
+        return view('admin.download_providers.index', compact('providers'));
+    }
+
+    public function importDownloadProviders(Request $request)
+    {
+        $request->validate([
+            'providers_json' => 'required|string',
+        ]);
+
+        $payload = json_decode($request->input('providers_json'), true);
+
+        if (! is_array($payload)) {
+            return back()->withErrors(['providers_json' => 'Dữ liệu JSON không hợp lệ.']);
+        }
+
+        if (isset($payload['result']) && is_array($payload['result'])) {
+            $payload = $payload['result'];
+        }
+
+        $providerItems = array_merge(
+            $payload['norProvider'] ?? [],
+            $payload['preProvider'] ?? []
+        );
+
+        foreach ($providerItems as $item) {
+            $slug = trim((string) data_get($item, 'provSlug'));
+            if ($slug === '') {
+                continue;
+            }
+
+            DownloadProvider::updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'display_name' => trim((string) data_get($item, 'provName', $slug)),
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        return back()->with('success', 'Danh sách provider đã được cập nhật và lưu vào cơ sở dữ liệu.');
+    }
+
+    public function editDownloadProvider(DownloadProvider $provider)
+    {
+        return view('admin.download_providers.edit', compact('provider'));
+    }
+
+    public function updateDownloadProvider(Request $request, DownloadProvider $provider)
+    {
+        $request->validate([
+            'display_name' => 'required|string|max:255',
+            'xu_cost' => 'required|integer|min:1',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $provider->update([
+            'display_name' => trim($request->input('display_name')),
+            'xu_cost' => (int) $request->input('xu_cost'),
+            'is_active' => (bool) $request->input('is_active'),
+        ]);
+
+        return redirect()->route('admin.download-providers')->with('success', 'Provider được cập nhật thành công.');
     }
 
     public function transactions()

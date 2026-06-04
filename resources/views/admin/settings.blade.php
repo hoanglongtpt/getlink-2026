@@ -15,14 +15,14 @@
             <form action="{{ route('admin.settings.update') }}" method="POST" class="space-y-4">
                 @csrf
                 <div>
-                    <label for="download_fee" class="block text-sm font-medium text-gray-700 mb-1">Chi phí mỗi lượt tải (Xu)</label>
+                    <label for="download_fee" class="block text-sm font-medium text-gray-700 mb-1">Chi phí mỗi lượt tải mặc định (Xu)</label>
                     <div class="relative">
                         <input id="download_fee" name="download_fee" type="number" value="{{ old('download_fee', $downloadFee) }}" class="w-full rounded-lg border border-gray-300 p-2.5 focus:border-purple-500 focus:ring focus:ring-purple-200 transition outline-none" required min="0">
                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                             <span class="text-gray-500 font-medium text-sm">Xu</span>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">Số lượng Xu người dùng bị trừ mỗi khi gửi request tải tài nguyên.</p>
+                    <p class="text-xs text-gray-500 mt-1">Số Xu mặc định cho một request nếu provider chưa được cấu hình trong danh sách provider.</p>
                 </div>
 
                 <div class="bg-white rounded-2xl border border-gray-200 p-4 mt-6">

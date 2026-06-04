@@ -14,7 +14,7 @@
         </div>
         <div>
             <p class="text-xs text-gray-500 font-medium">Chi phí tải</p>
-            <p class="text-sm text-gray-800 font-bold">{{ $downloadFee }} Xu <span class="text-gray-500 font-normal">/ request</span></p>
+            <p class="text-sm text-gray-800 font-bold">Theo provider (mặc định {{ $downloadFee }} Xu nếu chưa cài đặt)</p>
         </div>
     </div>
 </div>

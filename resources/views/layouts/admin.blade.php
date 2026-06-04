@@ -32,6 +32,9 @@
             <a href="{{ route('admin.resources') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.resources') ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }} transition">
                 <i class="fas fa-box-open w-5"></i> Tài nguyên Cache
             </a>
+            <a href="{{ route('admin.download-providers') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.download-providers*') ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }} transition">
+                <i class="fas fa-tags w-5"></i> Provider Xu
+            </a>
             
             <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2 pt-4 border-t border-gray-800">Cấu hình</p>
             

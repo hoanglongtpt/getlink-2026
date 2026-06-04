@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessDownloadedResource;
 use App\Jobs\ProcessGetstockDownload;
 use App\Models\DownloadHistory;
+use App\Models\DownloadProvider;
 use App\Models\Resource;
 use App\Models\Setting;
 use App\Services\GetstockService;
@@ -37,15 +38,6 @@ class DownloadController extends Controller
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $downloadFee = (int) Setting::getValue('download_fee', 10);
-
-        if (! $user->hasSufficientXu($downloadFee)) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Số dư xu không đủ để tải tài nguyên.']);
-            }
-            return back()->withErrors(['balance' => 'Số dư xu không đủ để tải tài nguyên.']);
-        }
-
         $link = trim((string) $request->input('link'));
         // Normalize link: treat trailing-slash and non-trailing as identical
         $normalizedLink = rtrim($link, '/');
@@ -53,12 +45,21 @@ class DownloadController extends Controller
 
         $resource = Resource::where('original_link', $normalizedLink)->first();
 
-                // Xử lý Cache Hit
+        // Xử lý Cache Hit
         if ($resource && filled($resource->google_drive_link)) {
+            $downloadFee = DownloadProvider::getCostForSlug($resource->provider);
+
+            if (! $user->hasSufficientXu($downloadFee)) {
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Số dư xu không đủ để tải tài nguyên.']);
+                }
+                return back()->withErrors(['balance' => 'Số dư xu không đủ để tải tài nguyên.']);
+            }
+
             $resource->increment('download_count');
             $xuSource = $user->deductXu($downloadFee);
 
-                        // Share file cho user cụ thể khi lấy từ cache
+            // Share file cho user cụ thể khi lấy từ cache
             $fileId = $resource->google_drive_file_id;
             $shareData = $driveService->getViewerLink($fileId, $user->email);
 
@@ -74,7 +75,7 @@ class DownloadController extends Controller
             ]);
 
             // Nếu share thành công, lên lịch thu hồi quyền sau 30 phút
-            if (!empty($shareData['permission_id'])) {
+            if (! empty($shareData['permission_id'])) {
                 \App\Jobs\RevokeGoogleDrivePermission::dispatch($fileId, $shareData['permission_id'])
                     ->delay(now()->addMinutes(30));
             }
@@ -84,9 +85,10 @@ class DownloadController extends Controller
                     'success' => true,
                     'message' => 'Tài nguyên đã có sẵn trong Cache. Quyền truy cập 30 phút đã được cấp cho email của bạn!',
                     'history' => $history,
-                    'new_balance' => $user->xu_balance
+                    'new_balance' => $user->xu_balance,
                 ]);
             }
+
             return redirect()->route('downloads.index')->with('success', 'Tài nguyên đã có sẵn. Link Drive sẽ được gửi về.');
         }
 
@@ -94,12 +96,10 @@ class DownloadController extends Controller
         $history = DownloadHistory::create([
             'user_id' => $user->id,
             'original_link' => $normalizedLink,
-            'xu_cost' => $downloadFee,
+            'xu_cost' => 0,
             'status' => 'pending',
             'is_premium' => $isPre === 1,
         ]);
-
-        $xuSource = $user->deductXu($downloadFee);
 
         try {
             // Lấy Info cơ bản siêu nhanh
@@ -119,14 +119,35 @@ class DownloadController extends Controller
                 throw new \RuntimeException('Getstock response missing required download references.');
             }
 
+            $provider = DownloadProvider::findOrCreateBySlug($slug, data_get($getLinkResponse, 'result.provName'));
+            $downloadFee = $provider->xu_cost;
+
+            if (! $user->hasSufficientXu($downloadFee)) {
+                $history->update([
+                    'getstock_slug' => $slug,
+                    'provider' => $slug,
+                    'xu_cost' => $downloadFee,
+                    'status' => 'failed',
+                ]);
+
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Số dư xu không đủ để tải tài nguyên theo provider này.']);
+                }
+
+                return back()->withErrors(['balance' => 'Số dư xu không đủ để tải tài nguyên theo provider này.']);
+            }
+
+            $xuSource = $user->deductXu($downloadFee);
             $history->update([
                 'getstock_slug' => $slug,
                 'getstock_item_id' => $itemId,
                 'getstock_type' => $type,
+                'provider' => $slug,
+                'xu_cost' => $downloadFee,
                 'status' => 'processing', // Chuyển sang đang xử lý ngầm
             ]);
 
-                        $statusResult = null;
+            $statusResult = null;
             for ($attempt = 0; $attempt < 3; $attempt++) {
                 sleep(3);
                 $statusResponse = $getstockService->checkDownloadStatus($slug, $itemId, $isPre, $type);
@@ -175,7 +196,7 @@ class DownloadController extends Controller
             Log::error('Getstock error', ['error' => $exception->getMessage(), 'user_id' => $user->id, 'link' => $link]);
             $history->update(['status' => 'failed']);
             $user->refresh();
-            $user->refundXu($downloadFee, $xuSource ?? 'balance');
+            $user->refundXu($downloadFee ?? 0, $xuSource ?? 'balance');
 
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Lỗi kết nối Getstock, vui lòng thử lại sau. Xu của bạn đã được hoàn lại.']);
