@@ -46,10 +46,12 @@ class DownloadController extends Controller
             return back()->withErrors(['balance' => 'Số dư xu không đủ để tải tài nguyên.']);
         }
 
-        $link = $request->input('link');
+        $link = trim((string) $request->input('link'));
+        // Normalize link: treat trailing-slash and non-trailing as identical
+        $normalizedLink = rtrim($link, '/');
         $isPre = (int) $request->input('ispre');
 
-        $resource = Resource::where('original_link', $link)->first();
+        $resource = Resource::where('original_link', $normalizedLink)->first();
 
                 // Xử lý Cache Hit
         if ($resource && filled($resource->google_drive_link)) {
@@ -91,7 +93,7 @@ class DownloadController extends Controller
         // Tạo bản ghi chờ
         $history = DownloadHistory::create([
             'user_id' => $user->id,
-            'original_link' => $link,
+            'original_link' => $normalizedLink,
             'xu_cost' => $downloadFee,
             'status' => 'pending',
             'is_premium' => $isPre === 1,
