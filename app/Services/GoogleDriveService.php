@@ -157,30 +157,27 @@ class GoogleDriveService
         public function getViewerLink(string $fileId, string $email = null): array
     {
         // Nếu không truyền email vào, mặc định file sẽ private (chỉ trả về link không share public)
-        if ($email) {
-            $permission = new \Google_Service_Drive_Permission();
-            $permission->setType('user');
-            $permission->setRole('reader');
-            $permission->setEmailAddress($email);
+        $permission = new \Google_Service_Drive_Permission();
+        $permission->setType('anyone');
+        $permission->setRole('reader');
+        $permission->setAllowFileDiscovery(false);
 
-            try {
-                $createdPermission = $this->service->permissions->create($fileId, $permission, [
-                    'supportsAllDrives' => true,
-                    'supportsTeamDrives' => true,
-                    'sendNotificationEmail' => false // Không gửi email rác làm phiền user
-                ]);
-                
-                return [
-                    'link' => sprintf('https://drive.google.com/file/d/%s/view?usp=sharing', $fileId),
-                    'permission_id' => $createdPermission->id
-                ];
-            } catch (\Throwable $exception) {
-                Log::warning('Google Drive permission creation failed', [
-                    'file_id' => $fileId,
-                    'email' => $email,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
+        try {
+            $createdPermission = $this->service->permissions->create($fileId, $permission, [
+                'supportsAllDrives' => true,
+                'supportsTeamDrives' => true,
+                'sendNotificationEmail' => false,
+            ]);
+
+            return [
+                'link' => sprintf('https://drive.google.com/file/d/%s/view?usp=sharing', $fileId),
+                'permission_id' => $createdPermission->id
+            ];
+        } catch (\Throwable $exception) {
+            Log::warning('Google Drive public permission creation failed', [
+                'file_id' => $fileId,
+                'error' => $exception->getMessage(),
+            ]);
         }
 
         return [
