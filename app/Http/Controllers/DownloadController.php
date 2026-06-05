@@ -119,7 +119,9 @@ class DownloadController extends Controller
                 throw new \RuntimeException('Getstock response missing required download references.');
             }
 
-            $provider = DownloadProvider::findOrCreateBySlug($slug, data_get($getLinkResponse, 'result.provName'));
+            // Use provType (stored in $type) as provider key because it represents specific variant
+            $providerKey = $type ?: $slug;
+            $provider = DownloadProvider::findOrCreateBySlug($providerKey, data_get($getLinkResponse, 'result.provName') ?: $providerKey);
             $downloadFee = $provider->xu_cost;
 
             if (! $user->hasSufficientXu($downloadFee)) {
@@ -142,7 +144,8 @@ class DownloadController extends Controller
                 'getstock_slug' => $slug,
                 'getstock_item_id' => $itemId,
                 'getstock_type' => $type,
-                'provider' => $slug,
+                // store provider as provType (or providerKey) so pricing lookup matches
+                'provider' => $providerKey,
                 'xu_cost' => $downloadFee,
                 'status' => 'processing', // Chuyển sang đang xử lý ngầm
             ]);

@@ -82,10 +82,11 @@ class ProcessDownloadedResource implements ShouldQueue
             $driveLinkData = $driveService->getViewerLink($fileId);
             $driveLink = $driveLinkData['link'];
 
-                        $resource = Resource::updateOrCreate([
-                'original_link' => $history->original_link,
-            ], [
-                'provider' => $history->provider,
+                            $resource = Resource::updateOrCreate([
+                                'original_link' => $history->original_link,
+                            ], [
+                                // Save provider as provType (getstock_type) to allow precise cost lookup
+                                'provider' => $history->getstock_type,
                 'is_premium' => false,
                 'file_name' => basename($tempPath),
                 'google_drive_link' => $driveLink,

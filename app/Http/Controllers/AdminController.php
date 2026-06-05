@@ -104,15 +104,21 @@ class AdminController extends Controller
         );
 
         foreach ($providerItems as $item) {
-            $slug = trim((string) data_get($item, 'provSlug'));
-            if ($slug === '') {
+            // Use provType as the unique key because provSlug can be shared across multiple types
+            $provType = trim((string) data_get($item, 'provType'));
+            $provName = trim((string) data_get($item, 'provName')) ?: $provType;
+            if ($provType === '') {
+                // fallback to provSlug if provType missing
+                $provType = trim((string) data_get($item, 'provSlug'));
+            }
+            if ($provType === '') {
                 continue;
             }
 
             DownloadProvider::updateOrCreate(
-                ['slug' => $slug],
+                ['slug' => $provType],
                 [
-                    'display_name' => trim((string) data_get($item, 'provName', $slug)),
+                    'display_name' => $provName,
                     'is_active' => true,
                 ]
             );
