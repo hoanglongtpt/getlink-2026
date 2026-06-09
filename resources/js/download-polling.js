@@ -164,19 +164,25 @@ document.addEventListener('DOMContentLoaded', function () {
         // Hide polling section after some time
         setTimeout(() => {
             if (pollingSection) {
-                pollingSection.classList.add('hidden');
-                // reset UI states for next time
-                if (pollingStatusText) {
-                    pollingStatusText.className = "text-sm font-medium text-purple-700";
-                    const dotIndicator = pollingStatusText.parentElement.querySelector('.bg-green-500');
-                    if (dotIndicator) {
-                        dotIndicator.classList.remove('bg-green-500');
-                        dotIndicator.classList.add('bg-purple-500');
+                // Don't hide the section immediately to let user see the download button
+                // pollingSection.classList.add('hidden');
+                
+                // reset UI states for next time when they submit a new link
+                setTimeout(() => {
+                    pollingSection.classList.add('hidden');
+                    if (pollingStatusText) {
+                        pollingStatusText.className = "text-sm font-medium text-purple-700";
+                        const dotIndicator = pollingStatusText.parentElement.querySelector('.bg-green-500');
+                        if (dotIndicator) {
+                            dotIndicator.classList.remove('bg-green-500');
+                            dotIndicator.classList.add('bg-purple-500');
+                        }
                     }
-                }
+                }, 30000); // Hide after 30 seconds instead
             }
-            window.location.href = '/profile#history'; // redirect to history
-        }, 5000);
+            // Removed automatic redirect to history
+            // window.location.href = '/profile#history'; 
+        }, 1000);
     }
     
     function handlePollingError(history) {
