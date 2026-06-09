@@ -25,8 +25,9 @@ class DownloadController extends Controller
         }
         
         $downloadFee = (int) Setting::getValue('download_fee', 10);
+        $providers = DownloadProvider::where('is_active', true)->orderBy('display_name')->get();
 
-        return view('downloads.index', compact('histories', 'downloadFee'));
+        return view('downloads.index', compact('histories', 'downloadFee', 'providers'));
     }
 
         public function store(Request $request, GetstockService $getstockService, \App\Services\GoogleDriveService $driveService)

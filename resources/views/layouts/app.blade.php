@@ -132,10 +132,29 @@
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
-            <div class="mx-auto max-w-7xl">
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6 flex flex-col">
+            <div class="mx-auto max-w-7xl flex-1 w-full">
                 @yield('content')
             </div>
+            
+            <!-- Footer -->
+            <footer class="mt-auto pt-8 pb-4 w-full">
+                <div class="mx-auto max-w-7xl border-t border-gray-200 pt-6 px-4">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-cloud-download-alt text-purple-600"></i>
+                            <span class="font-bold text-gray-700">{{ config('app.name', 'GetLink 2026') }}</span>
+                            <span class="text-sm text-gray-500">&copy; {{ date('Y') }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm text-gray-600">
+                            <span>Liên hệ hỗ trợ:</span>
+                            <a href="https://t.me/mmo_hoang" target="_blank" class="flex items-center gap-1.5 text-blue-500 hover:text-blue-700 font-medium transition-colors">
+                                <i class="fab fa-telegram text-lg"></i> @mmo_hoang
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </main>
     </div>
 </body>

@@ -99,22 +99,55 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-    <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0"><i class="fas fa-image"></i></div>
-        <div><p class="font-bold text-gray-800">Freepik</p><p class="text-xs text-gray-500">Premium Vectors & Photos</p></div>
+<!-- Các Provider được hỗ trợ -->
+<div class="mb-12">
+    <div class="text-center mb-6">
+        <h3 class="text-xl font-bold text-gray-800">Các nguồn tài nguyên được hỗ trợ</h3>
+        <p class="text-gray-500 text-sm mt-1">Hỗ trợ tải từ hơn 50+ website đồ họa, video, âm thanh hàng đầu</p>
     </div>
-    <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center text-xl shrink-0"><i class="fas fa-leaf"></i></div>
-        <div><p class="font-bold text-gray-800">Envato Elements</p><p class="text-xs text-gray-500">Unlimited Downloads</p></div>
+    
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        @if(isset($providers) && count($providers) > 0)
+            @foreach($providers->take(12) as $provider)
+            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer group">
+                <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-lg shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p class="font-bold text-gray-800 text-sm truncate">{{ $provider->display_name }}</p>
+                    <p class="text-xs text-purple-600 font-medium">{{ $provider->xu_cost }} Xu / link</p>
+                </div>
+            </div>
+            @endforeach
+        @else
+            <div class="col-span-full text-center text-gray-500 italic py-4">Đang cập nhật danh sách...</div>
+        @endif
     </div>
-    <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center text-xl shrink-0"><i class="fas fa-film"></i></div>
-        <div><p class="font-bold text-gray-800">Motion Array</p><p class="text-xs text-gray-500">Video Templates</p></div>
+    
+    @if(isset($providers) && count($providers) > 12)
+    <div class="text-center mt-6">
+        <span class="inline-flex items-center gap-2 text-sm text-purple-600 font-medium bg-purple-50 px-4 py-2 rounded-full cursor-help" title="Và nhiều website khác nữa">
+            <i class="fas fa-plus"></i> Hỗ trợ thêm {{ count($providers) - 12 }} provider khác
+        </span>
     </div>
-    <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center text-xl shrink-0"><i class="fas fa-crown"></i></div>
-        <div><p class="font-bold text-gray-800">Nhiều nguồn khác</p><p class="text-xs text-gray-500">Hỗ trợ 50+ providers</p></div>
+    @endif
+</div>
+
+<!-- Thẻ SEO Keywords -->
+<div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 mb-8">
+    <h3 class="text-sm font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <i class="fas fa-hashtag text-purple-600"></i> Từ khóa phổ biến
+    </h3>
+    <div class="flex flex-wrap gap-2">
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Getstock Premium</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Freepik Premium</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Envato Elements</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Motion Array</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Pikbest</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Tài Khoản Giá Rẻ</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Tải Ảnh Nhanh</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Vector Đẹp</a>
+        <a href="#" class="inline-block px-3 py-1.5 bg-gray-50 hover:bg-purple-50 text-gray-600 hover:text-purple-700 text-xs font-medium rounded-lg border border-gray-200 hover:border-purple-200 transition-colors">#Mua Chung Tài Khoản</a>
     </div>
 </div>
 
