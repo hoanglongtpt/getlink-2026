@@ -42,7 +42,8 @@ class ProcessDownloadedResource implements ShouldQueue
         @mkdir(dirname($tempPath), 0755, true);
 
         try {
-            $response = Http::withOptions(['sink' => $tempPath])->get($history->direct_download_link);
+            // Tăng timeout lên 600 giây (10 phút) để xử lý file lớn
+            $response = Http::timeout(600)->withOptions(['sink' => $tempPath])->get($history->direct_download_link);
             $successful = $response->successful();
             $statusCode = $response->status();
             $bodyPreview = substr($response->body(), 0, 500);

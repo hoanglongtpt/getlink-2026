@@ -1,18 +1,39 @@
 document.addEventListener('DOMContentLoaded', function () {
     const downloadForm = document.getElementById('downloadForm');
-    const historyTableBody = document.getElementById('historyTableBody');
     const btnSubmit = document.getElementById('btnSubmit');
+    const pollingSection = document.getElementById('pollingSection');
+    const pollingLinkDisplay = document.getElementById('pollingLinkDisplay');
+    const pollingStatusText = document.getElementById('pollingStatusText');
+    const pollingResultLink = document.getElementById('pollingResultLink');
 
-    if (!downloadForm || !historyTableBody) return;
+    if (!downloadForm) return;
 
     let pollingInterval = null;
+    let currentPollingId = null;
+
+    // Check if we need to resume polling for a pending item
+    const checkPendingDownloads = async () => {
+        try {
+            // Find all pending/processing histories
+            const pendingHistories = document.querySelectorAll('tr[data-status="pending"], tr[data-status="processing"], tr[data-status="ready"]');
+            if(pendingHistories && pendingHistories.length > 0) {
+                 // In a real app we might want to fetch pending downloads from API on load
+                 // For now this will be handled by the history page
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    
+    checkPendingDownloads();
 
     // Handle Form Submit via AJAX
     downloadForm.addEventListener('submit', async function (e) {
         e.preventDefault();
         
+        const originalContent = btnSubmit.innerHTML;
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin text-lg"></i><span>Đang xử lý...</span>';
         
         try {
             const formData = new FormData(downloadForm);
@@ -28,17 +49,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const result = await response.json();
 
             if (result.success) {
-                // Thêm bản ghi mới vào đầu bảng
-                addNewHistoryRow(result.history);
-                // Cập nhật số dư xu
+                // Update Xu balance if possible
                 updateXuBalance(result.new_balance);
                 
                 // Show success toast
                 showToast(result.message, 'success');
                 downloadForm.reset();
 
-                // Bắt đầu polling nếu có job pending/processing
-                startPolling();
+                // Start polling visually
+                startVisualPolling(result.history);
             } else {
                 showToast(result.message || 'Có lỗi xảy ra', 'error');
             }
@@ -47,24 +66,41 @@ document.addEventListener('DOMContentLoaded', function () {
             showToast('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'error');
         } finally {
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Submit Download';
+            btnSubmit.innerHTML = originalContent;
         }
     });
 
-    // Start Polling for pending/processing rows
-    function startPolling() {
-        if (pollingInterval) return;
-
-        pollingInterval = setInterval(async () => {
-            const processingRows = document.querySelectorAll('tr[data-status="pending"], tr[data-status="processing"], tr[data-status="ready"]');
+    function startVisualPolling(history) {
+        if (pollingInterval) clearInterval(pollingInterval);
+        
+        currentPollingId = history.id;
+        
+        // Show the polling UI
+        if (pollingSection) {
+            pollingSection.classList.remove('hidden');
+            if (pollingLinkDisplay) pollingLinkDisplay.textContent = history.original_link;
+            if (pollingStatusText) {
+                pollingStatusText.innerHTML = 'Hệ thống đang tải tài nguyên...';
+                pollingStatusText.parentElement.querySelector('.animate-ping')?.classList.remove('hidden');
+            }
+            if (pollingResultLink) pollingResultLink.classList.add('hidden');
             
-            if (processingRows.length === 0) {
+            // Scroll to polling section smoothly
+            pollingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // If it's already completed from the initial response (e.g., cached)
+        if (history.status === 'completed' || history.status === 'cached' || history.status === 'ready') {
+             handlePollingSuccess(history);
+             return;
+        }
+
+        // Start polling loop
+        pollingInterval = setInterval(async () => {
+            if (!currentPollingId) {
                 clearInterval(pollingInterval);
-                pollingInterval = null;
                 return;
             }
-
-            const idsToPoll = Array.from(processingRows).map(row => row.dataset.id);
 
             try {
                 const response = await fetch('/download/poll-status', {
@@ -74,105 +110,109 @@ document.addEventListener('DOMContentLoaded', function () {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('input[name="_csrf"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content
                     },
-                    body: JSON.stringify({ ids: idsToPoll })
+                    body: JSON.stringify({ ids: [currentPollingId] })
                 });
 
                 const updatedHistories = await response.json();
-
-                updatedHistories.forEach(history => {
-                    updateRowDisplay(history);
-                });
+                
+                if (updatedHistories && updatedHistories.length > 0) {
+                    const updatedHistory = updatedHistories[0];
+                    
+                    if (updatedHistory.status === 'completed' || updatedHistory.status === 'cached' || updatedHistory.status === 'ready') {
+                        handlePollingSuccess(updatedHistory);
+                    } else if (updatedHistory.status === 'failed') {
+                        handlePollingError(updatedHistory);
+                    }
+                }
             } catch (error) {
                 console.error("Polling error:", error);
             }
 
-        }, 3000); // Poll mỗi 3 giây
+        }, 3000); // Poll every 3 seconds
     }
 
-    function addNewHistoryRow(history) {
-        // Xóa dòng "No download history" nếu có
-        const emptyRow = document.getElementById('emptyHistoryRow');
-        if (emptyRow) emptyRow.remove();
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-gray-50 transition';
-        tr.dataset.id = history.id;
-        tr.dataset.status = history.status;
-        tr.id = `history-row-${history.id}`;
+    function handlePollingSuccess(history) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
         
-        const statusHtml = getStatusBadge(history.status);
-        const actionHtml = getActionHtml(history);
-        const dateStr = new Date(history.created_at).toLocaleString('vi-VN');
-
-        tr.innerHTML = `
-            <td class="px-6 py-4">
-                <div class="flex items-center max-w-[200px] sm:max-w-xs md:max-w-sm">
-                    <div class="truncate text-gray-800" title="${history.original_link}">
-                        ${history.original_link}
-                    </div>
-                </div>
-                <div class="text-xs text-gray-400 mt-1">${dateStr}</div>
-            </td>
-            <td class="px-6 py-4 status-cell">${statusHtml}</td>
-            <td class="px-6 py-4 text-gray-600 font-medium">${history.xu_cost} Xu</td>
-            <td class="px-6 py-4 whitespace-nowrap action-cell">${actionHtml}</td>
-        `;
-
-        historyTableBody.insertBefore(tr, historyTableBody.firstChild);
-    }
-
-    function updateRowDisplay(history) {
-        const row = document.getElementById(`history-row-${history.id}`);
-        if (!row) return;
-
-        // Nếu status thay đổi thì cập nhật UI
-        if (row.dataset.status !== history.status) {
-            row.dataset.status = history.status;
+        if (pollingStatusText) {
+            pollingStatusText.innerHTML = 'Tải thành công! File đã sẵn sàng.';
+            pollingStatusText.className = "text-sm font-bold text-green-600";
+            const pingIndicator = pollingStatusText.parentElement.querySelector('.animate-ping');
+            if (pingIndicator) pingIndicator.classList.add('hidden');
             
-            const statusCell = row.querySelector('.status-cell');
-            const actionCell = row.querySelector('.action-cell');
-            
-            if (statusCell) statusCell.innerHTML = getStatusBadge(history.status);
-            if (actionCell) actionCell.innerHTML = getActionHtml(history);
-
-            if (history.status === 'completed' || history.status === 'cached') {
-                showToast(`File đã sẵn sàng để tải xuống!`, 'success');
-            } else if (history.status === 'failed') {
-                showToast(`Tải thất bại. Số Xu của bạn đã được hoàn lại.`, 'error');
-                // Gọi API lấy lại số dư xu thực tế nếu cần
+            const dotIndicator = pollingStatusText.parentElement.querySelector('.bg-purple-500');
+            if (dotIndicator) {
+                dotIndicator.classList.remove('bg-purple-500');
+                dotIndicator.classList.add('bg-green-500');
             }
         }
-    }
-
-    function getStatusBadge(status) {
-        if (status === 'completed' || status === 'cached' || status === 'ready') {
-            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        ${status.charAt(0).toUpperCase() + status.slice(1)}
-                    </span>`;
-        } else if (status === 'failed') {
-            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        Failed
-                    </span>`;
-        } else {
-            return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        <i class="fas fa-circle-notch fa-spin text-[10px]"></i> ${status.charAt(0).toUpperCase() + status.slice(1)}
-                    </span>`;
+        
+        if (pollingResultLink && history.direct_download_link) {
+            pollingResultLink.href = history.direct_download_link;
+            pollingResultLink.classList.remove('hidden');
+            pollingResultLink.classList.add('flex');
+            
+            // Auto click to download or navigate
+            setTimeout(() => {
+                 window.open(history.direct_download_link, '_blank');
+            }, 1000);
         }
+        
+        showToast('Tài nguyên đã sẵn sàng để tải xuống!', 'success');
+        
+        // Hide polling section after some time
+        setTimeout(() => {
+            if (pollingSection) {
+                pollingSection.classList.add('hidden');
+                // reset UI states for next time
+                if (pollingStatusText) {
+                    pollingStatusText.className = "text-sm font-medium text-purple-700";
+                    const dotIndicator = pollingStatusText.parentElement.querySelector('.bg-green-500');
+                    if (dotIndicator) {
+                        dotIndicator.classList.remove('bg-green-500');
+                        dotIndicator.classList.add('bg-purple-500');
+                    }
+                }
+            }
+            window.location.href = '/profile#history'; // redirect to history
+        }, 5000);
     }
-
-    function getActionHtml(history) {
-        if (history.direct_download_link) {
-            return `<a href="${history.direct_download_link}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition text-xs font-medium" target="_blank">
-                        <i class="fas fa-download"></i> Download
-                    </a>`;
+    
+    function handlePollingError(history) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        
+        if (pollingStatusText) {
+            pollingStatusText.innerHTML = 'Tải thất bại. Vui lòng thử lại sau.';
+            pollingStatusText.className = "text-sm font-bold text-red-600";
+            const pingIndicator = pollingStatusText.parentElement.querySelector('.animate-ping');
+            if (pingIndicator) pingIndicator.classList.add('hidden');
+            
+            const dotIndicator = pollingStatusText.parentElement.querySelector('.bg-purple-500');
+            if (dotIndicator) {
+                dotIndicator.classList.remove('bg-purple-500');
+                dotIndicator.classList.add('bg-red-500');
+            }
         }
-        return `<span class="text-gray-400 text-xs italic">Processing...</span>`;
+        
+        showToast('Tải tài nguyên thất bại. Xu đã được hoàn lại.', 'error');
+        
+        // Hide polling section after some time
+        setTimeout(() => {
+            if (pollingSection) pollingSection.classList.add('hidden');
+        }, 5000);
     }
 
     function updateXuBalance(newBalance) {
+        if(newBalance === undefined || newBalance === null) return;
+        
         const balanceElements = document.querySelectorAll('.xu-balance-display');
         balanceElements.forEach(el => {
-            el.textContent = `${newBalance} Xu`;
+            // Need to handle the bonus part if exist, this is a simplified version
+            // In a real app we might return structured balance { xu: 10, bonus: 5 }
+            // For now just update the text content with a basic format
+            el.innerHTML = `${newBalance} Xu`;
         });
     }
 
@@ -180,16 +220,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const toastContainer = document.getElementById('toast-container') || createToastContainer();
         
         const toast = document.createElement('div');
-        toast.className = `p-4 mb-3 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full flex items-start gap-3 min-w-[300px] border shadow-[0_4px_12px_rgba(0,0,0,0.05)] ${
-            type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+        toast.className = `p-4 mb-3 rounded-xl shadow-lg transform transition-all duration-300 translate-x-full flex items-start gap-3 min-w-[300px] border shadow-[0_8px_30px_rgb(0,0,0,0.12)] ${
+            type === 'success' ? 'bg-white border-green-100 text-green-800' : 'bg-white border-red-100 text-red-800'
         }`;
         
-        const icon = type === 'success' ? '<i class="fas fa-check-circle mt-0.5 text-green-600"></i>' : '<i class="fas fa-exclamation-circle mt-0.5 text-red-600"></i>';
+        const iconContainer = document.createElement('div');
+        iconContainer.className = `w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${type === 'success' ? 'bg-green-100' : 'bg-red-100'}`;
+        
+        const icon = type === 'success' ? '<i class="fas fa-check text-green-600"></i>' : '<i class="fas fa-exclamation text-red-600"></i>';
+        iconContainer.innerHTML = icon;
         
         toast.innerHTML = `
-            ${icon}
-            <div class="font-medium text-sm flex-1">${message}</div>
-            <button class="text-gray-400 hover:text-gray-600 focus:outline-none" onclick="this.parentElement.remove()">
+            ${iconContainer.outerHTML}
+            <div class="font-medium text-sm flex-1 pt-1.5 text-gray-700">${message}</div>
+            <button class="text-gray-400 hover:text-gray-600 focus:outline-none pt-1" onclick="this.parentElement.remove()">
                 <i class="fas fa-times"></i>
             </button>
         `;
@@ -226,7 +270,4 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.appendChild(container);
         return container;
     }
-
-    // Tự động start polling nếu lúc load trang đã có record pending/processing
-    startPolling();
 });
