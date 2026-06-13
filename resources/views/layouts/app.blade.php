@@ -12,7 +12,6 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased flex h-screen overflow-hidden">
 
-    @auth
     <!-- Sidebar -->
     <aside class="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 hidden md:flex">
         <div class="h-16 flex items-center px-6 border-b border-gray-200">
@@ -20,7 +19,7 @@
                 <i class="fas fa-cloud-download-alt"></i> {{ config('app.name', 'GetLink') }}
             </a>
         </div>
-        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        <nav class="flex-1 px-4 py-6 flex flex-col overflow-hidden">
             <a href="{{ url('/dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->is('dashboard') || request()->is('/') ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-purple-600' }} transition">
                 <i class="fas fa-home w-5"></i> Bảng điều khiển
             </a>
@@ -29,7 +28,7 @@
                 <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Providers</p>
             </div>
             
-            <div class="space-y-1 max-h-60 overflow-y-auto pr-1" style="scrollbar-width: thin;">
+            <div class="space-y-1 flex-1 min-h-[420px] overflow-y-auto pr-1" style="scrollbar-width: thin;">
                 @if(isset($providers) && count($providers) > 0)
                     @foreach($providers as $provider)
                         <div class="flex items-center justify-between px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 group">
@@ -49,27 +48,34 @@
                 <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Tài khoản</p>
             </div>
             
+            @auth
             <a href="{{ route('packages.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('packages.index') ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-purple-600' }} transition">
                 <i class="fas fa-coins w-5"></i> Nạp Xu (Bảng Giá)
             </a>
+            @else
+            <a href="{{ route('login') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-purple-600 transition">
+                <i class="fas fa-sign-in-alt w-5"></i> Đăng nhập
+            </a>
+            <a href="{{ route('register') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 transition">
+                <i class="fas fa-user-plus w-5"></i> Đăng ký
+            </a>
+            @endauth
         </nav>
     </aside>
-    @endauth
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col h-screen overflow-hidden">
         <!-- Header -->
         <header class="h-16 flex-shrink-0 bg-white shadow-sm flex items-center justify-between px-6 lg:px-8 z-10 text-gray-800">
             <div class="flex items-center gap-4">
-                @auth
                 <button class="md:hidden text-gray-600 hover:text-purple-600">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
-                @else
+                <div class="md:hidden">
                 <a href="{{ url('/') }}" class="text-xl font-bold tracking-wider flex items-center gap-2 text-purple-700">
                     <i class="fas fa-cloud-download-alt"></i> {{ config('app.name', 'GetLink') }}
                 </a>
-                @endauth
+                </div>
                 <h2 class="text-lg font-semibold hidden sm:block text-gray-700">
                     @yield('header_title', 'Dashboard')
                 </h2>
@@ -140,17 +146,24 @@
             <!-- Footer -->
             <footer class="mt-auto pt-8 pb-4 w-full">
                 <div class="mx-auto max-w-7xl border-t border-gray-200 pt-6 px-4">
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div class="flex items-center gap-2">
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                            <div class="max-w-3xl">
+                                <p class="text-sm leading-6 text-gray-600">
+                                    <strong class="font-bold text-gray-800">GetLinkNhanh.com</strong> là nền tảng hỗ trợ tải tài nguyên trực tuyến dành cho cộng đồng sáng tạo. Với tốc độ xử lý nhanh, hệ thống ổn định và dịch vụ hỗ trợ tận tâm, chúng tôi cam kết mang đến trải nghiệm tiện lợi, an toàn và hiệu quả cho người dùng.
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-gray-600">
+                                <span>Liên hệ hỗ trợ:</span>
+                                <a href="https://t.me/mmo_hoang" target="_blank" class="flex items-center gap-1.5 text-blue-500 hover:text-blue-700 font-medium transition-colors">
+                                    <i class="fab fa-telegram text-lg"></i> @mmo_hoang
+                                </a>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm text-gray-500">
                             <i class="fas fa-cloud-download-alt text-purple-600"></i>
                             <span class="font-bold text-gray-700">{{ config('app.name', 'GetLink 2026') }}</span>
-                            <span class="text-sm text-gray-500">&copy; {{ date('Y') }}</span>
-                        </div>
-                        <div class="flex items-center gap-2 text-sm text-gray-600">
-                            <span>Liên hệ hỗ trợ:</span>
-                            <a href="https://t.me/mmo_hoang" target="_blank" class="flex items-center gap-1.5 text-blue-500 hover:text-blue-700 font-medium transition-colors">
-                                <i class="fab fa-telegram text-lg"></i> @mmo_hoang
-                            </a>
+                            <span>&copy; {{ date('Y') }}</span>
                         </div>
                     </div>
                 </div>

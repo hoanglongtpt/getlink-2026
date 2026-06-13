@@ -25,7 +25,16 @@ class DownloadController extends Controller
         }
         
         $downloadFee = (int) Setting::getValue('download_fee', 10);
-        $providers = DownloadProvider::where('is_active', true)->orderBy('display_name')->get();
+        $providers = DownloadProvider::where('is_active', true)
+            ->select('download_providers.*')
+            ->selectSub(
+                DownloadHistory::selectRaw('COUNT(*)')
+                    ->whereColumn('download_histories.provider', 'download_providers.slug'),
+                'downloads_count'
+            )
+            ->orderByDesc('downloads_count')
+            ->orderBy('display_name')
+            ->get();
 
         return view('downloads.index', compact('histories', 'downloadFee', 'providers'));
     }
@@ -71,6 +80,7 @@ class DownloadController extends Controller
                 'direct_download_link' => $resource->google_drive_link,
                 'drive_permission_id' => $shareData['permission_id'] ?? null,
                 'xu_cost' => $downloadFee,
+                'xu_source' => $xuSource,
                 'status' => 'cached',
                 'provider' => $resource->provider,
             ]);
@@ -105,11 +115,7 @@ class DownloadController extends Controller
         try {
             // Lấy Info cơ bản siêu nhanh
             $info = $getstockService->getInfo($link, $isPre);
-            $type = null;
-
-            if (! empty($info['result']['support']['type'][0])) {
-                $type = $info['result']['support']['type'][0];
-            }
+            $type = $getstockService->firstSupportedType($info);
 
             $getLinkResponse = $getstockService->getLink($link, $isPre, $type);
             $slug = data_get($getLinkResponse, 'result.provSlug');
@@ -148,43 +154,11 @@ class DownloadController extends Controller
                 // store provider as provType (or providerKey) so pricing lookup matches
                 'provider' => $providerKey,
                 'xu_cost' => $downloadFee,
+                'xu_source' => $xuSource,
                 'status' => 'processing', // Chuyển sang đang xử lý ngầm
             ]);
 
-            $statusResult = null;
-            for ($attempt = 0; $attempt < 3; $attempt++) {
-                sleep(3);
-                $statusResponse = $getstockService->checkDownloadStatus($slug, $itemId, $isPre, $type);
-                if (data_get($statusResponse, 'result.status') === 1 && data_get($statusResponse, 'result.itemDCode')) {
-                    $statusResult = $statusResponse;
-                    break;
-                }
-            }
-
-            if ($statusResult) {
-                $itemDCode = data_get($statusResult, 'result.itemDCode');
-                $directLink = $getstockService->buildDirectDownloadLink($itemDCode);
-
-                $history->update([
-                    'direct_download_link' => $directLink,
-                    'item_d_code' => $itemDCode,
-                    'status' => 'ready',
-                ]);
-
-                ProcessDownloadedResource::dispatch($history);
-
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Hệ thống đã nhận link trực tiếp, đang xử lý đưa lên Drive của bạn...',
-                        'history' => $history,
-                        'new_balance' => $user->xu_balance
-                    ]);
-                }
-                return redirect()->route('downloads.index')->with('success', 'Download is ready. Use the direct link from your history entry.');
-            }
-
-            // Nếu 3 lần đầu chưa xong, đẩy vào Queue
+            // Đẩy polling Getstock vào queue để request không bị treo khi API xử lý lâu.
             ProcessGetstockDownload::dispatch($history);
 
             if ($request->expectsJson()) {

@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const pollingLinkDisplay = document.getElementById('pollingLinkDisplay');
     const pollingStatusText = document.getElementById('pollingStatusText');
     const pollingResultLink = document.getElementById('pollingResultLink');
+    const pollingTitle = document.getElementById('pollingTitle');
+    const pollingIconWrap = document.getElementById('pollingIconWrap');
+    const pollingIcon = document.getElementById('pollingIcon');
+    const pollingProgressBar = document.getElementById('pollingProgressBar');
 
     if (!downloadForm) return;
 
@@ -34,9 +38,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const originalContent = btnSubmit.innerHTML;
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin text-lg"></i><span>Đang xử lý...</span>';
+        const formData = new FormData(downloadForm);
+        showProcessingPanel(formData.get('link') || 'Đang chuẩn bị link...');
         
         try {
-            const formData = new FormData(downloadForm);
             const response = await fetch(downloadForm.action, {
                 method: 'POST',
                 body: formData,
@@ -59,10 +64,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Start polling visually
                 startVisualPolling(result.history);
             } else {
+                handlePollingError();
                 showToast(result.message || 'Có lỗi xảy ra', 'error');
             }
         } catch (error) {
             console.error(error);
+            handlePollingError();
             showToast('Lỗi kết nối máy chủ. Vui lòng thử lại.', 'error');
         } finally {
             btnSubmit.disabled = false;
@@ -70,27 +77,54 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    function showProcessingPanel(link) {
+        if (pollingInterval) clearInterval(pollingInterval);
+        currentPollingId = null;
+
+        if (!pollingSection) return;
+
+        pollingSection.classList.remove('hidden');
+        if (pollingTitle) pollingTitle.textContent = 'Đang xử lý yêu cầu tải...';
+        if (pollingLinkDisplay) pollingLinkDisplay.textContent = link;
+        if (pollingStatusText) {
+            pollingStatusText.textContent = 'Hệ thống đang tải tài nguyên...';
+            pollingStatusText.className = 'text-sm font-medium text-purple-700';
+        }
+        if (pollingIconWrap) {
+            pollingIconWrap.className = 'w-16 h-16 shrink-0 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center relative';
+        }
+        if (pollingIcon) {
+            pollingIcon.className = 'fas fa-spinner fa-spin text-3xl';
+        }
+        if (pollingProgressBar) pollingProgressBar.classList.remove('hidden');
+        if (pollingResultLink) {
+            pollingResultLink.href = '#';
+            pollingResultLink.classList.add('hidden');
+            pollingResultLink.classList.remove('flex');
+        }
+
+        const indicator = pollingStatusText?.parentElement;
+        indicator?.querySelector('.animate-ping')?.classList.remove('hidden');
+        const dotIndicator = indicator?.querySelector('.relative.inline-flex');
+        if (dotIndicator) {
+            dotIndicator.classList.remove('bg-green-500', 'bg-red-500');
+            dotIndicator.classList.add('bg-purple-500');
+        }
+
+        pollingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     function startVisualPolling(history) {
         if (pollingInterval) clearInterval(pollingInterval);
         
         currentPollingId = history.id;
         
         // Show the polling UI
-        if (pollingSection) {
-            pollingSection.classList.remove('hidden');
-            if (pollingLinkDisplay) pollingLinkDisplay.textContent = history.original_link;
-            if (pollingStatusText) {
-                pollingStatusText.innerHTML = 'Hệ thống đang tải tài nguyên...';
-                pollingStatusText.parentElement.querySelector('.animate-ping')?.classList.remove('hidden');
-            }
-            if (pollingResultLink) pollingResultLink.classList.add('hidden');
-            
-            // Scroll to polling section smoothly
-            pollingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        showProcessingPanel(history.original_link);
+        currentPollingId = history.id;
 
         // If it's already completed from the initial response (e.g., cached)
-        if (history.status === 'completed' || history.status === 'cached' || history.status === 'ready') {
+        if (history.status === 'completed' || history.status === 'cached') {
              handlePollingSuccess(history);
              return;
         }
@@ -118,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (updatedHistories && updatedHistories.length > 0) {
                     const updatedHistory = updatedHistories[0];
                     
-                    if (updatedHistory.status === 'completed' || updatedHistory.status === 'cached' || updatedHistory.status === 'ready') {
+                    if (updatedHistory.status === 'completed' || updatedHistory.status === 'cached') {
                         handlePollingSuccess(updatedHistory);
                     } else if (updatedHistory.status === 'failed') {
                         handlePollingError(updatedHistory);
@@ -136,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
         pollingInterval = null;
         
         if (pollingStatusText) {
-            pollingStatusText.innerHTML = 'Tải thành công! File đã sẵn sàng.';
+            pollingStatusText.innerHTML = 'Getlink thành công';
             pollingStatusText.className = "text-sm font-bold text-green-600";
             const pingIndicator = pollingStatusText.parentElement.querySelector('.animate-ping');
             if (pingIndicator) pingIndicator.classList.add('hidden');
@@ -147,6 +181,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 dotIndicator.classList.add('bg-green-500');
             }
         }
+
+        if (pollingTitle) pollingTitle.textContent = 'Getlink thành công';
+        if (pollingIconWrap) {
+            pollingIconWrap.className = 'w-16 h-16 shrink-0 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center relative';
+        }
+        if (pollingIcon) {
+            pollingIcon.className = 'fas fa-check-circle text-3xl';
+        }
+        if (pollingProgressBar) pollingProgressBar.classList.add('hidden');
         
         if (pollingResultLink && history.direct_download_link) {
             pollingResultLink.href = history.direct_download_link;
@@ -160,29 +203,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         showToast('Tài nguyên đã sẵn sàng để tải xuống!', 'success');
-        
-        // Hide polling section after some time
-        setTimeout(() => {
-            if (pollingSection) {
-                // Don't hide the section immediately to let user see the download button
-                // pollingSection.classList.add('hidden');
-                
-                // reset UI states for next time when they submit a new link
-                setTimeout(() => {
-                    pollingSection.classList.add('hidden');
-                    if (pollingStatusText) {
-                        pollingStatusText.className = "text-sm font-medium text-purple-700";
-                        const dotIndicator = pollingStatusText.parentElement.querySelector('.bg-green-500');
-                        if (dotIndicator) {
-                            dotIndicator.classList.remove('bg-green-500');
-                            dotIndicator.classList.add('bg-purple-500');
-                        }
-                    }
-                }, 30000); // Hide after 30 seconds instead
-            }
-            // Removed automatic redirect to history
-            // window.location.href = '/profile#history'; 
-        }, 1000);
     }
     
     function handlePollingError(history) {
@@ -201,13 +221,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 dotIndicator.classList.add('bg-red-500');
             }
         }
+
+        if (pollingTitle) pollingTitle.textContent = 'Getlink thất bại';
+        if (pollingIconWrap) {
+            pollingIconWrap.className = 'w-16 h-16 shrink-0 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center relative';
+        }
+        if (pollingIcon) {
+            pollingIcon.className = 'fas fa-times-circle text-3xl';
+        }
+        if (pollingProgressBar) pollingProgressBar.classList.add('hidden');
         
         showToast('Tải tài nguyên thất bại. Xu đã được hoàn lại.', 'error');
-        
-        // Hide polling section after some time
-        setTimeout(() => {
-            if (pollingSection) pollingSection.classList.add('hidden');
-        }, 5000);
     }
 
     function updateXuBalance(newBalance) {

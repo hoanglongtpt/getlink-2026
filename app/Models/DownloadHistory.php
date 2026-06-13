@@ -16,6 +16,7 @@ class DownloadHistory extends Model
         'direct_download_link',
         'drive_permission_id',
         'xu_cost',
+        'xu_source',
         'status',
         'provider',
         'item_d_code',

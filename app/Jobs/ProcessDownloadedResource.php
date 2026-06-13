@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\DownloadHistory;
 use App\Models\Resource;
+use App\Services\GetstockService;
 use App\Services\GoogleDriveService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -25,7 +26,7 @@ class ProcessDownloadedResource implements ShouldQueue
         $this->downloadHistory = $downloadHistory;
     }
 
-    public function handle(GoogleDriveService $driveService): void
+    public function handle(GoogleDriveService $driveService, GetstockService $getstockService): void
     {
         $history = $this->downloadHistory->fresh();
 
@@ -42,39 +43,26 @@ class ProcessDownloadedResource implements ShouldQueue
         @mkdir(dirname($tempPath), 0755, true);
 
         try {
-            // Tăng timeout lên 600 giây (10 phút) để xử lý file lớn
-            $response = Http::timeout(600)->withOptions(['sink' => $tempPath])->get($history->direct_download_link);
-            $successful = $response->successful();
-            $statusCode = $response->status();
-            $bodyPreview = substr($response->body(), 0, 500);
+            $downloadResult = $this->downloadToTemp($history->direct_download_link, $tempPath);
 
-            // Try to close underlying PSR-7 stream to release file handle on Windows.
-            if (method_exists($response, 'toPsrResponse')) {
-                try {
-                    $psr = $response->toPsrResponse();
-                    if ($psr && method_exists($psr, 'getBody')) {
-                        $body = $psr->getBody();
-                        if (is_object($body) && method_exists($body, 'close')) {
-                            try {
-                                $body->close();
-                            } catch (\Throwable $e) {
-                                // ignore
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // ignore
-                }
+            if (
+                ! $downloadResult['successful']
+                && in_array($downloadResult['status'], [401, 403], true)
+                && filled($history->item_d_code)
+            ) {
+                $freshDirectLink = $getstockService->buildDirectDownloadLink($history->item_d_code);
+                $history->update(['direct_download_link' => $freshDirectLink]);
+
+                Log::warning('Retrying Getstock direct download with refreshed token', [
+                    'history_id' => $history->id,
+                    'status' => $downloadResult['status'],
+                ]);
+
+                $downloadResult = $this->downloadToTemp($freshDirectLink, $tempPath);
             }
 
-            unset($response);
-            // Force garbage collection to ensure any lingering stream resources are freed.
-            if (function_exists('gc_collect_cycles')) {
-                @gc_collect_cycles();
-            }
-
-            if (! $successful) {
-                throw new \RuntimeException('Failed to download direct file: ' . $statusCode . ' body=' . $bodyPreview);
+            if (! $downloadResult['successful']) {
+                throw new \RuntimeException('Failed to download direct file: ' . $downloadResult['status'] . ' body=' . $downloadResult['body_preview']);
             }
 
                         $fileId = $driveService->uploadFile($tempPath, $history->original_link);
@@ -117,6 +105,9 @@ class ProcessDownloadedResource implements ShouldQueue
                 'error' => $exception->getMessage(),
             ]);
             $history->update(['status' => 'failed']);
+            if ($history->user && (int) $history->xu_cost > 0) {
+                $history->user->refundXu((int) $history->xu_cost, $history->xu_source ?? 'balance');
+            }
         } finally {
             // Try to free any remaining resources and clear file stat cache before deletion.
             if (function_exists('gc_collect_cycles')) {
@@ -135,5 +126,42 @@ class ProcessDownloadedResource implements ShouldQueue
                 }
             }
         }
+    }
+
+    protected function downloadToTemp(string $url, string $tempPath): array
+    {
+        if (file_exists($tempPath)) {
+            @unlink($tempPath);
+        }
+
+        // Tăng timeout lên 600 giây (10 phút) để xử lý file lớn.
+        $response = Http::timeout(600)->withOptions(['sink' => $tempPath])->get($url);
+        $result = [
+            'successful' => $response->successful(),
+            'status' => $response->status(),
+            'body_preview' => substr($response->body(), 0, 500),
+        ];
+
+        // Try to close underlying PSR-7 stream to release file handle on Windows.
+        if (method_exists($response, 'toPsrResponse')) {
+            try {
+                $psr = $response->toPsrResponse();
+                if ($psr && method_exists($psr, 'getBody')) {
+                    $body = $psr->getBody();
+                    if (is_object($body) && method_exists($body, 'close')) {
+                        $body->close();
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore
+            }
+        }
+
+        unset($response);
+        if (function_exists('gc_collect_cycles')) {
+            @gc_collect_cycles();
+        }
+
+        return $result;
     }
 }

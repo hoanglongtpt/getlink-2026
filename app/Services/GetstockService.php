@@ -43,7 +43,9 @@ class GetstockService
 
     protected function performRequest(string $method, string $uri, array $options = [], bool $retry = true)
     {
-        $options = array_merge($options, $this->authenticatedOptions());
+        $authenticatedOptions = $this->authenticatedOptions();
+        $options['headers'] = array_merge($authenticatedOptions['headers'], $options['headers'] ?? []);
+        $options['query'] = array_merge($options['query'] ?? [], $authenticatedOptions['query']);
 
         try {
             return $this->client->request($method, $uri, $options);
@@ -99,12 +101,35 @@ class GetstockService
 
     protected function authenticatedOptions(): array
     {
+        $token = $this->getToken();
+
         return [
             'headers' => [
-                'Authorization' => 'Bearer ' . $this->getToken(),
                 'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $token,
+            ],
+            'query' => [
+                'token' => $token,
             ],
         ];
+    }
+
+    public function firstSupportedType(array $info): ?string
+    {
+        $types = data_get($info, 'result.support.type');
+
+        if (! is_array($types) || $types === []) {
+            return data_get($info, 'result.itemType');
+        }
+
+        $firstKey = array_key_first($types);
+        $firstValue = $types[$firstKey] ?? null;
+
+        if (is_string($firstKey) && $firstKey !== '') {
+            return $firstKey;
+        }
+
+        return is_string($firstValue) && $firstValue !== '' ? $firstValue : null;
     }
 
     public function getInfo(string $link, int $isPre): array

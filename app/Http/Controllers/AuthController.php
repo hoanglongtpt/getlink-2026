@@ -30,7 +30,7 @@ class AuthController extends Controller
             return redirect()->intended('/dashboard');
         }
 
-        return back()->withErrors(['email' => 'The provided credentials do not match our records.']);
+        return back()->withErrors(['email' => 'Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.'])->withInput($request->only('email', 'remember'));
     }
 
     public function showRegister()

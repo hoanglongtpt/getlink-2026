@@ -76,10 +76,10 @@ class ProcessGetstockDownload implements ShouldQueue
             }
         }
 
-                if (! $itemDCode) {
+        if (! $itemDCode) {
             $history->update(['status' => 'failed']);
-            // Hoàn tiền nếu Getstock không trả về file sau 12 lần thử
-            $history->user->increment('xu_balance', $history->xu_cost);
+            // Hoàn tiền đúng ví đã bị trừ khi Getstock không trả về file.
+            $history->user->refundXu((int) $history->xu_cost, $history->xu_source ?? 'balance');
             return;
         }
 
